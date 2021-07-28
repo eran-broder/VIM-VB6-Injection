@@ -1,2 +1,0 @@
-#define HOOKEDLIBRARY_API __declspec(dllexport)
-#define HOOKEDLIBRARY_API __declspec(dllimport)

@@ -5,8 +5,6 @@ VisualStudioVersion = 16.0.31313.79
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SetHookForInjection", "SetHookForInjection\SetHookForInjection.csproj", "{271B9709-8DBA-49CA-B461-6ADC73CFA5F7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HookedLibrary", "HookedLibrary\HookedLibrary.vcxproj", "{BD8685B6-69AB-48DD-BE89-F91B098EC18F}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VimInjectedIpc", "VimInjectedIpc\VimInjectedIpc.vcxproj", "{E830D241-B257-4707-A551-D35EB51D2049}"
 EndProject
 Global
@@ -31,16 +29,6 @@ Global
 		{271B9709-8DBA-49CA-B461-6ADC73CFA5F7}.Release|x64.Build.0 = Release|Any CPU
 		{271B9709-8DBA-49CA-B461-6ADC73CFA5F7}.Release|x86.ActiveCfg = Release|Any CPU
 		{271B9709-8DBA-49CA-B461-6ADC73CFA5F7}.Release|x86.Build.0 = Release|Any CPU
-		{BD8685B6-69AB-48DD-BE89-F91B098EC18F}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{BD8685B6-69AB-48DD-BE89-F91B098EC18F}.Debug|x64.ActiveCfg = Debug|x64
-		{BD8685B6-69AB-48DD-BE89-F91B098EC18F}.Debug|x64.Build.0 = Debug|x64
-		{BD8685B6-69AB-48DD-BE89-F91B098EC18F}.Debug|x86.ActiveCfg = Debug|Win32
-		{BD8685B6-69AB-48DD-BE89-F91B098EC18F}.Debug|x86.Build.0 = Debug|Win32
-		{BD8685B6-69AB-48DD-BE89-F91B098EC18F}.Release|Any CPU.ActiveCfg = Release|Win32
-		{BD8685B6-69AB-48DD-BE89-F91B098EC18F}.Release|x64.ActiveCfg = Release|x64
-		{BD8685B6-69AB-48DD-BE89-F91B098EC18F}.Release|x64.Build.0 = Release|x64
-		{BD8685B6-69AB-48DD-BE89-F91B098EC18F}.Release|x86.ActiveCfg = Release|Win32
-		{BD8685B6-69AB-48DD-BE89-F91B098EC18F}.Release|x86.Build.0 = Release|Win32
 		{E830D241-B257-4707-A551-D35EB51D2049}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{E830D241-B257-4707-A551-D35EB51D2049}.Debug|x64.ActiveCfg = Debug|x64
 		{E830D241-B257-4707-A551-D35EB51D2049}.Debug|x64.Build.0 = Debug|x64
