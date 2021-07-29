@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -27,18 +28,20 @@ namespace SetHookForInjection
             Loaded += (sender, args) => Go();
         }
 
-        private (string pathOfExe, string pathOfInjectedDll) GetFilesForDemo()
+        private (string pathOfExe, string pathOfInjectedDll, string pathOfWorkerDll) GetFilesForDemo()
         {
             var baseFolder = System.IO.Path.GetFullPath(@"../../../../../");
             string Full(string relative) => Path.Join(baseFolder, relative);
             return (Full(@"Playground App\Caller.exe"),
-                    Full(@"Injected Dll\Called.dll"));
+                    Full(@"Injected Dll\Called.dll"),
+                    Full(@"SetHookForInjection\Debug\VimInjectedIpc.dll"));
         }
 
 
         private void Go()
         {
-            var (pathOfExe, pathOfInjectedDll) = GetFilesForDemo();
+            var (pathOfExe, pathOfInjectedDll, pathOfWorkerDll) = GetFilesForDemo();
+            CopyWorkerDllToWorkingDirectory(pathOfExe, pathOfWorkerDll);
             var (handleOfWindow, _) = GetWindowHandleToInject(pathOfExe, "Form1");
             var threadId = PInvoke.GetWindowThreadProcessId(handleOfWindow, out var processId);
 
@@ -68,6 +71,12 @@ namespace SetHookForInjection
             //TODO: make sure ok
             PInvoke.UnhookWindowsHookEx(hoolHandle);
 
+        }
+
+        private void CopyWorkerDllToWorkingDirectory(string pathOfExe, string pathOfWorkerDll)
+        {
+            var destPath = Path.Join(Path.GetDirectoryName(pathOfExe), Path.GetFileName(pathOfWorkerDll));
+            File.Copy(pathOfWorkerDll, destPath);
         }
 
         private void UpdateUi(uint lpdwProcessId, uint threadId, IntPtr handleOfWindow)

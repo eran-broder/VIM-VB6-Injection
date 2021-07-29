@@ -10,8 +10,8 @@ Private Declare Function SetTimer Lib "user32" (ByVal hWnd As Long, ByVal nIDEve
 Private Declare Function KillTimer Lib "user32" (ByVal hWnd As Long, ByVal nIDEvent As Long) As Long
 
 'path to the dll in wich we handle the IPC
-Private Declare Function StartListenerThread Lib "[PathToDllDirectory]\VimInjectedIpc.dll" () As Long
-Private Declare Function getValue Lib "[PathToDllDirectory]\VimInjectedIpc.dll" (ByRef msg As VimMessage) As Long
+Private Declare Function StartListenerThread Lib "VimInjectedIpc.dll" () As Long
+Private Declare Function getValue Lib "VimInjectedIpc.dll" (ByRef msg As VimMessage) As Long
 
 Private Declare Function CallNextHookEx Lib "user32" _
   (ByVal hHook As Long, _
