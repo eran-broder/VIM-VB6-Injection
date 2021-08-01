@@ -76,7 +76,7 @@ namespace SetHookForInjection
         private void CopyWorkerDllToWorkingDirectory(string pathOfExe, string pathOfWorkerDll)
         {
             var destPath = Path.Join(Path.GetDirectoryName(pathOfExe), Path.GetFileName(pathOfWorkerDll));
-            File.Copy(pathOfWorkerDll, destPath);
+            File.Copy(pathOfWorkerDll, destPath, true);
         }
 
         private void UpdateUi(uint lpdwProcessId, uint threadId, IntPtr handleOfWindow)

@@ -50,7 +50,7 @@ Public Sub DoSetUp(ByVal handleOfWindow As Long)
 End Sub
 
 Sub InvokeInternalFunction()
-    Dim formToManipulate As Form
+    Dim formToManipulate As form
     Set formToManipulate = FormFinder.FindFormByCaption("Form1")
     If Not formToManipulate Is Nothing Then
         CallByName formToManipulate, "AddAseessment", VbMethod, &H639BA, False, "VIM Code", "Vim Name", "VIM Specify", "VIM Notes"
