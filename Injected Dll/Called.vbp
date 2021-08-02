@@ -5,6 +5,7 @@ Module=GlobalProvider; GlobalProvider.bas
 Module=FormFinder; FormFinder.bas
 Module=MessageHandler; MessageHandler.bas
 Class=DummyClass; DummyClass.cls
+Module=ControlFinder; ControlFinder.bas
 Startup="(None)"
 ExeName32="Called.dll"
 Command32=""

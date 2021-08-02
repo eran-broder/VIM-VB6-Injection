@@ -16,7 +16,7 @@ struct VimMessage {
 
 extern "C" __declspec(dllexport) int StartListenerThread() {
 	setup_thread();
-	return 1;
+	return 333;
 }
 
 extern "C" __declspec(dllexport) int getValue(VimMessage* result) {
@@ -43,7 +43,7 @@ BOOL setup_thread() {
 DWORD WINAPI ListenerThread(LPVOID lpParam) {
 	while (true)
 	{
-		Beep(523, 500);
+		Beep(800, 100);
 		Sleep(2000);
 	}
 }

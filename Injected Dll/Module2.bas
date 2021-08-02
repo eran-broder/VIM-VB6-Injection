@@ -1,13 +1,19 @@
 Attribute VB_Name = "Module2"
+Option Explicit
+
 Public Const DLL_PROCESS_DETACH = 0
 Public Const DLL_PROCESS_ATTACH = 1
 Public Const DLL_THREAD_ATTACH = 2
 Public Const DLL_THREAD_DETACH = 3
 
-Dim AlreadyCalled As Boolean
+Dim m_alreadyCalled As Boolean
+Dim m_timerId As Long
+Dim m_wasTimerCalled As Boolean
 
 Private Declare Function SetTimer Lib "user32" (ByVal hWnd As Long, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As Long) As Long
 Private Declare Function KillTimer Lib "user32" (ByVal hWnd As Long, ByVal nIDEvent As Long) As Long
+Private Declare Function Beep Lib "kernel32" (ByVal dwFreq As Long, ByVal dwDuration As Long) As Long
+Private Declare Function GetCurrentThreadId Lib "kernel32" () As Long
 
 'path to the dll in wich we handle the IPC
 Private Declare Function StartListenerThread Lib "VimInjectedIpc.dll" () As Long
@@ -45,8 +51,9 @@ Public Function DllMain(ByVal hInst As Long, ByVal fdwReason As Long, _
    End Select
 End Function
 
+
 Public Sub DoSetUp(ByVal handleOfWindow As Long)
-    SetTimer handleOfWindow, 0, 1, AddressOf TimerProc
+    m_timerId = SetTimer(handleOfWindow, 0, 500, AddressOf TimerProc)
 End Sub
 
 Sub InvokeInternalFunction()
@@ -58,16 +65,28 @@ Sub InvokeInternalFunction()
 End Sub
 
 Sub LoadExternalLibAndInvoke()
+
+    'MsgBox "Thread Id = " + CStr(GetCurrentThreadId())
+    
     Dim ret As Long
     ret = StartListenerThread
-    Dim action As VimMessage
-    getValue action
-    MsgBox action.MessageType
+    'MsgBox CStr(ret)
+    
+    
+    'Dim action As VimMessage
+    'getValue action
 End Sub
 
 Sub TimerProc(ByVal hWnd As Long, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As Long)
 On Error GoTo ErrorHandler
-    KillTimer hWnd, 0
+
+    If m_wasTimerCalled Then
+        MsgBox "Called twice"
+    End If
+    
+    m_wasTimerCalled = True
+    
+    KillTimer m_timerId, 0
     GlobalProvider.GetGlobal
     InvokeInternalFunction
     LoadExternalLibAndInvoke
@@ -77,9 +96,9 @@ ErrorHandler:
 End Sub
 
 Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef lParam As msg) As Long
-    If Not AlreadyCalled Then
-        AlreadyCalled = True
-        DoSetUp lParam.hWnd
+    If Not m_alreadyCalled Then
+        m_alreadyCalled = True
+        DoSetUp 0
     End If
     'TODO: do we need to invoke CallNextHook
 End Function
