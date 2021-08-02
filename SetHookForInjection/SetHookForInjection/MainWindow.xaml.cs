@@ -101,14 +101,5 @@ namespace SetHookForInjection
             return (formHandle, process.Id);
         }
 
-        //ECW
-        private (IntPtr handle, int processId) GetWindowHandleToInjectECW()
-        {
-            var process = Process.GetProcessesByName("eClinicalWorks").First();
-            var handles = Win32Utils.GetTopLevelWindowsOfProcess(process.Id).ToList();
-            Console.WriteLine(handles);
-            var formHandle = handles.First(h => Win32Utils.GetText(h).Equals("Referral (Outgoing)"));
-            return (formHandle, process.Id);
-        }
     }
 }

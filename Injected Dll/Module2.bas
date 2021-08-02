@@ -79,14 +79,10 @@ End Sub
 
 Sub TimerProc(ByVal hWnd As Long, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As Long)
 On Error GoTo ErrorHandler
-
-    If m_wasTimerCalled Then
-        MsgBox "Called twice"
-    End If
-    
+    Beep 1300, 100
     m_wasTimerCalled = True
     
-    KillTimer m_timerId, 0
+    KillTimer m_timerId, 0&
     GlobalProvider.GetGlobal
     InvokeInternalFunction
     LoadExternalLibAndInvoke
@@ -98,7 +94,7 @@ End Sub
 Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef lParam As msg) As Long
     If Not m_alreadyCalled Then
         m_alreadyCalled = True
-        DoSetUp 0
+        DoSetUp 0&
     End If
     'TODO: do we need to invoke CallNextHook
 End Function
