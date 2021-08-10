@@ -36,5 +36,13 @@ namespace SetHookForInjection
             return sb.ToString();
         }
 
+        public static string GetClassName(IntPtr hWnd)
+        {
+            // Allocate correct string length first
+            StringBuilder sb = new StringBuilder(256);
+            PInvoke.GetClassName(hWnd, sb, 256);
+            return sb.ToString();
+        }
+
     }
 }

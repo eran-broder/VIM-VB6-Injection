@@ -16,8 +16,9 @@ Private Declare Function Beep Lib "kernel32" (ByVal dwFreq As Long, ByVal dwDura
 Private Declare Function GetCurrentThreadId Lib "kernel32" () As Long
 
 'path to the dll in wich we handle the IPC
-Private Declare Function StartListenerThread Lib "VimInjectedIpc.dll" () As Long
-Private Declare Function getValue Lib "VimInjectedIpc.dll" (ByRef msg As VimMessage) As Long
+Private Declare Function start_listener_thread Lib "VimInjectedIpc.dll" (ByVal handleOfWindow As Long) As Long
+Private Declare Function load_clr Lib "VimInjectedIpc.dll" (ByVal path As String) As Long
+
 
 Private Declare Function CallNextHookEx Lib "user32" _
   (ByVal hHook As Long, _
@@ -51,9 +52,14 @@ Public Function DllMain(ByVal hInst As Long, ByVal fdwReason As Long, _
    End Select
 End Function
 
+Sub Log(ByVal msg As String)
 
-Public Sub DoSetUp(ByVal handleOfWindow As Long)
-    m_timerId = SetTimer(handleOfWindow, 0, 500, AddressOf TimerProc)
+    Dim formToManipulate As form
+    Set formToManipulate = FormFinder.FindFormByCaption("Form1")
+    If Not formToManipulate Is Nothing Then
+        CallByName formToManipulate, "Log", VbMethod, msg
+    End If
+
 End Sub
 
 Sub InvokeInternalFunction()
@@ -64,38 +70,27 @@ Sub InvokeInternalFunction()
     End If
 End Sub
 
-Sub LoadExternalLibAndInvoke()
-
-    'MsgBox "Thread Id = " + CStr(GetCurrentThreadId())
-    
+Sub LoadExternalLibAndInvoke(ByVal handleOfWindow As Long)
     Dim ret As Long
-    ret = StartListenerThread
-    'MsgBox CStr(ret)
-    
-    
-    'Dim action As VimMessage
-    'getValue action
+    'ret = start_listener_thread(handleOfWindow)
+    start_listener_thread handleOfWindow
+    Log "From the c++ got : " + CStr(ret)
 End Sub
 
-Sub TimerProc(ByVal hWnd As Long, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As Long)
-On Error GoTo ErrorHandler
-    Beep 1300, 100
-    m_wasTimerCalled = True
-    
-    KillTimer m_timerId, 0&
-    GlobalProvider.GetGlobal
+Public Sub DoSetUp(ByVal handleOfWindow As Long)
+    'm_timerId = SetTimer(handleOfWindow, 0, 1500, AddressOf TimerProc)
     InvokeInternalFunction
-    LoadExternalLibAndInvoke
-    Exit Sub
-ErrorHandler:
-    MsgBox Err.Description + " " + Err.Source
+    LoadExternalLibAndInvoke handleOfWindow
 End Sub
 
 Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef lParam As msg) As Long
-    If Not m_alreadyCalled Then
-        m_alreadyCalled = True
-        DoSetUp 0&
+    If lParam.message = 1029 Then
+        Log "Well well well... Handle of window = " + CStr(lParam.hWnd) + " lParam=" + CStr(lParam.wParam) + "  wParam=" + CStr(lParam.lParam)
+        DoSetUp lParam.hWnd
+    ElseIf lParam.message = 1030 Then
+        Log "!Got some love from the thread!"
     End If
-    'TODO: do we need to invoke CallNextHook
+    
+    CallNextHookEx 0, idHook, wParam, VarPtr(lParam)
 End Function
 

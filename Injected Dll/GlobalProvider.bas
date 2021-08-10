@@ -60,13 +60,10 @@ End Function
 Private Function GetVBHeader() As Long
     Dim ptr     As Long
     Dim hModule As Long
+    Dim hModuleFromNull As Long
     
-    'hModule = GetModuleHandle(ByVal 0&)
-    'hModule = GetModuleHandle(ByVal "eClinicalWorks.exe")
-    hModule = GetModuleHandle(ByVal "Caller.exe")
-    
-    'MsgBox "Module : " + CStr(hModule)
-    
+    hModule = GetModuleHandle(vbNullString)
+        
     ' Get e_lfanew
     GetMem4 ByVal hModule + &H3C, ptr
     ' Get AddressOfEntryPoint

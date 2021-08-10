@@ -1,12 +1,12 @@
 VERSION 5.00
 Begin VB.Form Form1 
    Caption         =   "Form1"
-   ClientHeight    =   4380
+   ClientHeight    =   8340
    ClientLeft      =   120
    ClientTop       =   465
    ClientWidth     =   5115
    LinkTopic       =   "Form1"
-   ScaleHeight     =   4380
+   ScaleHeight     =   8340
    ScaleWidth      =   5115
    StartUpPosition =   3  'Windows Default
    Begin VB.Frame Frame1 
@@ -64,19 +64,20 @@ Begin VB.Form Form1
       End
    End
    Begin VB.TextBox TextBoxOutput 
-      Height          =   855
+      Height          =   5055
       Left            =   240
+      MultiLine       =   -1  'True
       TabIndex        =   1
-      Text            =   "Text1"
+      Text            =   "Caller.frx":0000
       Top             =   2520
-      Width           =   4095
+      Width           =   4695
    End
    Begin VB.CommandButton cmdCall 
       Caption         =   "Call Function"
       Height          =   495
-      Left            =   720
+      Left            =   960
       TabIndex        =   0
-      Top             =   3600
+      Top             =   7680
       Width           =   2895
    End
 End
@@ -114,6 +115,13 @@ End Sub
 
 
 Public Sub AddAseessment(nId, bPrimary, strCode, strName, strSpecify, strNotes) '14F11A0
-    TextBoxOutput = "Assesment added : " + CStr(nId) + " - " + CStr(strCode)
+    Log "Assesment added : " + CStr(nId) + " - " + CStr(strCode)
+    'TextBoxOutput = "Assesment added : " + CStr(nId) + " - " + CStr(strCode)
 End Sub
+
+
+Public Sub Log(ByVal msg As String) '14F11A0
+    TextBoxOutput = TextBoxOutput.Text + vbNewLine + msg
+End Sub
+
 

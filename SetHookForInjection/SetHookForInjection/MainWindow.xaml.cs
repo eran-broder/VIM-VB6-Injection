@@ -34,9 +34,9 @@ namespace SetHookForInjection
             string Full(string relative) => Path.Join(baseFolder, relative);
             return (Full(@"Playground App\Caller.exe"),
                     Full(@"Injected Dll\Called.dll"),
-                    Full(@"SetHookForInjection\Debug\VimInjectedIpc.dll"));
+                    Full(@"SetHookForInjection\Debug\DllThatLoadsClr.dll")
+                    );
         }
-
 
         private void Go()
         {
@@ -61,21 +61,23 @@ namespace SetHookForInjection
             {
                 throw new Exception($"Cannot find function");
             }
-
+            
             //TODO: change hook type
             var hoolHandle = PInvoke.SetWindowsHookEx(PInvoke.HookType.WH_GETMESSAGE, addressAsDelegate, dll, threadId);
 
-            //TODO: trigger the hook and validate return value as a handshake
+            ////TODO: trigger the hook and validate return value as a handshake
             Thread.Sleep(TimeSpan.FromSeconds(2));
+            PInvoke.PostMessage(handleOfWindow, 1029, 222, new IntPtr(333));
 
-            //TODO: make sure ok
-            PInvoke.UnhookWindowsHookEx(hoolHandle);
+            
+            //PInvoke.UnhookWindowsHookEx(hoolHandle);
 
         }
 
         private void CopyWorkerDllToWorkingDirectory(string pathOfExe, string pathOfWorkerDll)
         {
-            var destPath = Path.Join(Path.GetDirectoryName(pathOfExe), Path.GetFileName(pathOfWorkerDll));
+            //var destPath = Path.Join(Path.GetDirectoryName(pathOfExe), Path.GetFileName(pathOfWorkerDll));
+            var destPath = Path.Join(Path.GetDirectoryName(pathOfExe), "VimInjectedIpc.dll");
             File.Copy(pathOfWorkerDll, destPath, true);
         }
 
@@ -95,9 +97,11 @@ namespace SetHookForInjection
             var process = Process.Start(pathOfExe);
             Thread.Sleep(TimeSpan.FromMilliseconds(500));
             var handles = Win32Utils.GetTopLevelWindowsOfProcess(process.Id).ToList();
+            var classes = handles.Select(Win32Utils.GetClassName).ToList();
+            Console.WriteLine(classes);
             Console.WriteLine(handles);
             //var formHandle = handles.First(h => Win32Utils.GetText(h).Equals("Referral (Outgoing)"));
-            var formHandle = handles.First(h => Win32Utils.GetText(h).Equals(captionOfWindow));
+            var formHandle = handles.First(h => Win32Utils.GetClassName(h).Equals("ThunderRT6Main", StringComparison.InvariantCultureIgnoreCase));
             return (formHandle, process.Id);
         }
 

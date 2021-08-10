@@ -1,38 +1,30 @@
 #include "pch.h"
-#include <windows.h> // WinApi header 
+#include <Windows.h> // WinApi header 
+#include <chrono>
+#include <thread>
 
-BOOL setup_thread();
+using namespace std::chrono_literals;
+
+BOOL setup_thread(HWND hookedWindowHandle);
 DWORD WINAPI ListenerThread(LPVOID lpParam);
 
-struct VimMessage {
-	int MessageId;
-	char MessageType[255];
-	char Arg1[255];
-	char Arg2[255];
-	char Arg3[255];
-	char Arg4[255];
-	char Arg5[255];
-};
+BOOL g_should_keep_running = TRUE;
 
-extern "C" __declspec(dllexport) int StartListenerThread() {
-	setup_thread();
-	return 333;
+//TODO: can I return a callback function?
+extern "C" __declspec(dllexport) BOOL start_listener_thread(HWND hookedWindowHandle) {
+	return setup_thread(hookedWindowHandle);	
 }
 
-extern "C" __declspec(dllexport) int getValue(VimMessage* result) {
-	strcpy_s(result->MessageType, "InvokeOnForm");
-	strcpy_s(result->Arg1, "[HandleOfForm]");
-	strcpy_s(result->Arg2, "[NameOfMethod]");
-	strcpy_s(result->Arg3, "[Arg1]");
-	strcpy_s(result->Arg4, "[Arg2]");
-	strcpy_s(result->Arg5, "[Arg3]");
-	return 0;
+//TODO: this should block.
+//TODO: the start should return some cancellation token. 
+extern "C" __declspec(dllexport) BOOL stop_listener_thread() {
+	g_should_keep_running = FALSE;
+	return TRUE;
 }
 
-BOOL setup_thread() {
+BOOL setup_thread(HWND hookedWindowHandle) {
 	DWORD threadID = 0;
-
-	auto g_hThread = CreateThread(nullptr, 0, ListenerThread, nullptr, 0, &threadID);
+	const auto g_hThread = CreateThread(nullptr, 0, ListenerThread, hookedWindowHandle, 0, &threadID);
 	if (g_hThread == nullptr) {
 		//TODO: Log it
 		return FALSE;
@@ -41,9 +33,13 @@ BOOL setup_thread() {
 }
 
 DWORD WINAPI ListenerThread(LPVOID lpParam) {
-	while (true)
-	{
+	const auto hooked_window_handle = static_cast<HWND>(lpParam);
+	
+	while (g_should_keep_running)
+	{		
 		Beep(800, 100);
-		Sleep(2000);
+		std::this_thread::sleep_for(2000ms);
+		PostMessage(hooked_window_handle, 1030, 555, 666);
 	}
+	return 0;
 }
