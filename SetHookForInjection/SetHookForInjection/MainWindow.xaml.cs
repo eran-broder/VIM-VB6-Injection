@@ -35,6 +35,7 @@ namespace SetHookForInjection
             return (Full(@"Playground App\Caller.exe"),
                     Full(@"Injected Dll\Called.dll"),
                     Full(@"SetHookForInjection\Debug\DllThatLoadsClr.dll")
+                    //Full(@"SetHookForInjection\Release\DllThatLoadsClr.dll")
                     );
         }
 

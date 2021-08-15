@@ -10,16 +10,23 @@
 #define MANAGED_ASSEMBLY "ManagedLibrary.dll"
 #define WINDOWS TRUE
 
+#define DBG(msg) MessageBoxA(nullptr, msg, "VIM", MB_OK)
+
 // Define OS-specific items like the CoreCLR library's name and path elements
 #include <Windows.h>
 #define FS_SEPARATOR "\\"
 #define PATH_DELIMITER ";"
 #define CORECLR_FILE_NAME "coreclr.dll"
 
+#define MANAGED_CODE_PATH "C:\\Users\\broder\\Documents\\GitHub\\VIM-VB6-Injection\\SetHookForInjection\\InjectedAppIpc\\bin\\Release\\net5.0\\publish\\InjectedAppIpc.exe"
+//#define MANAGED_CODE_PATH "C:\\vim\\samples-main\\core\\hosting\\HostWithCoreClrHost\\bin\\windows\\SampleHost.exe"
+
 // Function pointer types for the managed call and callback
 typedef int (*report_callback_ptr)(int progress);
 typedef char* (*doWork_ptr)(const char* jobName, int iterations, int dataSize, double* data, report_callback_ptr callbackFunction);
-typedef int (*doWork2_ptr)();
+typedef int (*doWork2_ptr)(int windowHandle);
+//typedef int (*doWork2_ptr)(const char* windowHandle);
+//typedef int (*doWork2_ptr)();
 
 void BuildTpaList(const char* directory, const char* extension, std::string& tpaList);
 int ReportProgressCallback(int progress);
@@ -31,9 +38,12 @@ extern "C" __declspec(dllexport) BOOL stop_listener_thread() {
     return TRUE;
 }
 
+HWND _hookedHandle;
 extern "C" __declspec(dllexport) BOOL start_listener_thread(HWND hookedWindowHandle) {
     //setup_thread(hookedWindowHandle);
+    DBG("GOGO GO GO ");
     load_clr((char*)"bla");
+    _hookedHandle = hookedWindowHandle;
     return TRUE;
 }
 
@@ -47,8 +57,7 @@ BOOL setup_thread(HWND hookedWindowHandle) {
     return TRUE;    
 }
 
-DWORD WINAPI ListenerThread(LPVOID lpParam) {
-    //MessageBoxA(nullptr, "Lets go", "", MB_OK);
+DWORD WINAPI ListenerThread(LPVOID lpParam) {    
     load_clr((char*)"bla");
     return 0;
 }
@@ -63,7 +72,7 @@ extern "C" __declspec(dllexport) BOOL load_clr(char* pathOfExe)
     //char runtimePath[MAX_PATH];
     //GetFullPathNameA(pathOfExe, MAX_PATH, runtimePath, NULL);
 	
-    char runtimePath[MAX_PATH] = "C:\\Users\\broder\\Documents\\GitHub\\VIM-VB6-Injection\\SetHookForInjection\\InjectedAppIpc\\bin\\Release\\net5.0\\publish\\InjectedAppIpc.exe";
+    char runtimePath[MAX_PATH] = MANAGED_CODE_PATH;
 
     //char runtimePath[MAX_PATH] = "C:\\vim\\samples-main\\core\\hosting\\HostWithCoreClrHost\\bin\\windows\\ManagedLibrary.exe";    
     //char runtimePath[MAX_PATH] = "C:\\Users\\broder\\source\\repos\\InjectedAppIpc\\InjectedAppIpc\\bin\\Release\\net5.0\\publish\\InjectedAppIpc.exe";	
@@ -91,7 +100,7 @@ extern "C" __declspec(dllexport) BOOL load_clr(char* pathOfExe)
     HMODULE coreClr = LoadLibraryExA(coreClrPath.c_str(), NULL, 0);
     if (coreClr == NULL)
     {
-        MessageBoxA(nullptr, "Failed to load CoreCLR ", "bla", MB_OK);
+        DBG("Failed to load CoreCLR ");        
         printf("ERROR: Failed to load CoreCLR from %s\n", coreClrPath.c_str());
         return -1;
     }
@@ -100,20 +109,10 @@ extern "C" __declspec(dllexport) BOOL load_clr(char* pathOfExe)
         printf("Loaded CoreCLR from %s\n", coreClrPath.c_str());
     }
 
-    //
-    // STEP 2: Get CoreCLR hosting functions
-    //
-#if WINDOWS
-    // <Snippet2>
+
     coreclr_initialize_ptr initializeCoreClr = (coreclr_initialize_ptr)GetProcAddress(coreClr, "coreclr_initialize");
     coreclr_create_delegate_ptr createManagedDelegate = (coreclr_create_delegate_ptr)GetProcAddress(coreClr, "coreclr_create_delegate");
     coreclr_shutdown_ptr shutdownCoreClr = (coreclr_shutdown_ptr)GetProcAddress(coreClr, "coreclr_shutdown");
-    // </Snippet2>
-#elif LINUX
-    coreclr_initialize_ptr initializeCoreClr = (coreclr_initialize_ptr)dlsym(coreClr, "coreclr_initialize");
-    coreclr_create_delegate_ptr createManagedDelegate = (coreclr_create_delegate_ptr)dlsym(coreClr, "coreclr_create_delegate");
-    coreclr_shutdown_ptr shutdownCoreClr = (coreclr_shutdown_ptr)dlsym(coreClr, "coreclr_shutdown");
-#endif
 
     if (initializeCoreClr == NULL)
     {
@@ -121,7 +120,6 @@ extern "C" __declspec(dllexport) BOOL load_clr(char* pathOfExe)
         printf("coreclr_initialize not found");
         return -1;
     }
-
     if (createManagedDelegate == NULL)
     {
         MessageBoxA(nullptr, "coreclr_create_delegate not found", "bla", MB_OK);
@@ -204,10 +202,8 @@ extern "C" __declspec(dllexport) BOOL load_clr(char* pathOfExe)
     hr = createManagedDelegate(
         hostHandle,
         domainId,
-        "InjectedAppIpc, Version=1.0.0.0",
-        "InjectedAppIpc.ManagedWorker",
-        //"ManagedLibrary, Version=1.0.0.0",
-        //"ManagedLibrary.ManagedWorker",
+        "ManagedLibrary, Version=1.0.0.0",
+        "ManagedLibrary.ManagedWorker",
         "DoWork2",
         (void**)&managedDelegate2);
     // </Snippet5>
@@ -218,7 +214,7 @@ extern "C" __declspec(dllexport) BOOL load_clr(char* pathOfExe)
     }
     else
     {
-        printf("coreclr_create_delegate failed - status: 0x%08x\n", hr);
+        DBG("createManagedDelegate failed");
         return -1;
     }
 
@@ -226,87 +222,26 @@ extern "C" __declspec(dllexport) BOOL load_clr(char* pathOfExe)
 
     // Invoke the managed delegate and write the returned string to the console
     MessageBoxA(nullptr, "about to call", "hello!", MB_OK);
-    int x = managedDelegate2();
+    int x = managedDelegate2(111);
     std::string ret2 = "Managed code returned: " + std::to_string(x);
-    MessageBoxA(nullptr, ret2.c_str(), "hello!", MB_OK);
-    
-    printf("Managed code returned: %s\n");
-   
-    //---------------------------------------------------------------
-
-	
-    //
-    // STEP 5: Create delegate to managed code and invoke it
-    //
-
-    // <Snippet5>
-    doWork_ptr managedDelegate;
-
-    // The assembly name passed in the third parameter is a managed assembly name
-    // as described at https://docs.microsoft.com/dotnet/framework/app-domains/assembly-names
-    hr = createManagedDelegate(
-        hostHandle,
-        domainId,
-        "ManagedLibrary, Version=1.0.0.0",
-        "ManagedLibrary.ManagedWorker",
-        //"InjectedAppIpc, Version=1.0.0.0",        
-        //"InjectedAppIpc.Program",
-        "DoWork",
-        (void**)&managedDelegate);
-    // </Snippet5>
-
-    if (hr >= 0)
-    {
-        printf("Managed delegate created\n");
-    }
-    else
-    {
-        MessageBoxA(nullptr, "coreclr_create_delegate failed", "bla", MB_OK);
-        printf("coreclr_create_delegate failed - status: 0x%08x\n", hr);
-        return -1;
-    }
-
-    // Create sample data for the double[] argument of the managed method to be called
-    double data[4];
-    data[0] = 0;
-    data[1] = 0.25;
-    data[2] = 0.5;
-    data[3] = 0.75;
-    
-    // Invoke the managed delegate and write the returned string to the console
-    char* ret = managedDelegate("Test job", 3, sizeof(data) / sizeof(double), data, ReportProgressCallback);
-
-    printf("Managed code returned: %s\n", ret);
-    MessageBoxA(nullptr, "returned from call", "bla", MB_OK);
+    MessageBoxA(nullptr, ret2.c_str(), "hello!", MB_OK);         
 
     // Strings returned to native code must be freed by the native code
-#if WINDOWS
     //CoTaskMemFree(ret);
-#elif LINUX
-    free(ret);
-#endif
-
-    //
-    // STEP 6: Shutdown CoreCLR
-    //
-
-    // <Snippet6>
-    hr = shutdownCoreClr(hostHandle, domainId);
-    // </Snippet6>
-
+    
+    hr = shutdownCoreClr(hostHandle, domainId);   
     if (hr >= 0)
     {
         printf("CoreCLR successfully shutdown\n");
     }
     else
     {
-        printf("coreclr_shutdown failed - status: 0x%08x\n", hr);
+        MessageBoxA(nullptr, "coreclr_shutdown failed", "bla", MB_OK);
     }
 
     return 0;
 }
 
-#if WINDOWS
 // Win32 directory search for .dll files
 // <Snippet7>
 void BuildTpaList(const char* directory, const char* extension, std::string& tpaList)
@@ -346,43 +281,6 @@ void BuildTpaList(const char* directory, const char* extension, std::string& tpa
         FindClose(fileHandle);
     }
 }
-// </Snippet7>
-#elif LINUX
-// POSIX directory search for .dll files
-void BuildTpaList(const char* directory, const char* extension, std::string& tpaList)
-{
-    DIR* dir = opendir(directory);
-    struct dirent* entry;
-    int extLength = strlen(extension);
-
-    while ((entry = readdir(dir)) != NULL)
-    {
-        // This simple sample doesn't check for symlinks
-        std::string filename(entry->d_name);
-
-        // Check if the file has the right extension
-        int extPos = filename.length() - extLength;
-        if (extPos <= 0 || filename.compare(extPos, extLength, extension) != 0)
-        {
-            continue;
-        }
-
-        // Append the assembly to the list
-        tpaList.append(directory);
-        tpaList.append(FS_SEPARATOR);
-        tpaList.append(filename);
-        tpaList.append(PATH_DELIMITER);
-
-        // Note that the CLR does not guarantee which assembly will be loaded if an assembly
-        // is in the TPA list multiple times (perhaps from different paths or perhaps with different NI/NI.dll
-        // extensions. Therefore, a real host should probably add items to the list in priority order and only
-        // add a file if it's not already present on the list.
-        //
-        // For this simple sample, though, and because we're only loading TPA assemblies from a single path,
-        // and have no native images, we can ignore that complication.
-    }
-}
-#endif
 
 // Callback function passed to managed code to facilitate calling back into native code with status
 int ReportProgressCallback(int progress)
