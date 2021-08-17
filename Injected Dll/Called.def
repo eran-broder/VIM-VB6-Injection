@@ -3,3 +3,4 @@ LIBRARY Called
 DESCRIPTION "Additional functions to be exported"
 EXPORTS DllMain @1
         KeyboardProc @2
+        ExportedFunction @3

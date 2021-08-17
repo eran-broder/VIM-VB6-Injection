@@ -8,36 +8,57 @@
 #include "Externals/coreclrhost.h"
 
 #define EXTRACT_CORECLR_PROC(name, handle) reinterpret_cast<name ## _ptr>(GetProcAddress(handle, #name))
+
 //TODO: can you access via system .h file?
 #define FS_SEPARATOR "\\"
 #define PATH_DELIMITER ";"
 
-typedef int (WINAPI *doWorkSlim_ptr)();
 typedef int (WINAPI* doWork_ptr)(int x);
+
+static doWork_ptr g_doWork_ptr;
+static doWork_ptr g_InvokeFromMainThread_ptr;
 
 std::string BuildTpaList(const std::string& directory, const char* extension);
 
+struct CoreBundle
+{
+    void* hostHandle;
+    unsigned int domainId;
+};
+
+BOOL InitializeHost(LPCSTR path_of_coreclr, CoreBundle& bundle);
+
+auto InvokeAgain(int x)->BOOL
+{
+    std::cout << "Now the dll!" << std::endl;
+    g_InvokeFromMainThread_ptr(500);
+    std::cout << "after managed invoke!";
+    return 500;
+}
+
 auto LoadClr(LPCSTR path_of_coreclr) -> BOOL
 {
-	std::cout << "loading clr from" << path_of_coreclr << std::endl;
+	    
 
-	const HMODULE coreclr_module_handle = LoadLibraryExA(path_of_coreclr, nullptr, 0);
-	
-	FAIL_IF_NULL_MSG(coreclr_module_handle, "failed loading library")	
-	DBG("OK! library loaded!");
+    std::cout << "loading clr from" << path_of_coreclr << std::endl;
 
-	const auto initializeCoreClr = EXTRACT_CORECLR_PROC(coreclr_initialize, coreclr_module_handle);
-	const auto createManagedDelegate = EXTRACT_CORECLR_PROC(coreclr_create_delegate, coreclr_module_handle);
-	const auto shutdownCoreClr = EXTRACT_CORECLR_PROC(coreclr_shutdown, coreclr_module_handle);
-		
+    const HMODULE coreclr_module_handle = LoadLibraryExA(path_of_coreclr, nullptr, 0);
+
+    FAIL_IF_NULL_MSG(coreclr_module_handle, "failed loading library")
+        DBG("OK! library loaded!");
+
+    const auto initializeCoreClr = EXTRACT_CORECLR_PROC(coreclr_initialize, coreclr_module_handle);
+    const auto createManagedDelegate = EXTRACT_CORECLR_PROC(coreclr_create_delegate, coreclr_module_handle);
+    const auto shutdownCoreClr = EXTRACT_CORECLR_PROC(coreclr_shutdown, coreclr_module_handle);
+
     FAIL_IF_NULL(initializeCoreClr)
         FAIL_IF_NULL(createManagedDelegate)
         FAIL_IF_NULL(shutdownCoreClr)
 
-	const auto base_path = GetFileDirectory(path_of_coreclr);
-	const auto tpa_list = BuildTpaList(base_path, ".dll");
-    const char* propertyKeys[] = {"TRUSTED_PLATFORM_ASSEMBLIES"};
-    const char* propertyValues[] = {tpa_list.c_str()};
+        const auto base_path = GetFileDirectory(path_of_coreclr);
+    const auto tpa_list = BuildTpaList(base_path, ".dll");
+    const char* propertyKeys[] = { "TRUSTED_PLATFORM_ASSEMBLIES" };
+    const char* propertyValues[] = { tpa_list.c_str() };
 
     void* hostHandle;
     unsigned int domainId;
@@ -52,11 +73,11 @@ auto LoadClr(LPCSTR path_of_coreclr) -> BOOL
         propertyValues,     // Property values
         &hostHandle,        // Host handle
         &domainId);         // AppDomain ID
-	
+
 
     FAIL_IF(hr < 0, "coreclr_initialize failed");
-
-
+    
+	
     doWork_ptr managedDelegate;
 
     // The assembly name passed in the third parameter is a managed assembly name
@@ -72,10 +93,26 @@ auto LoadClr(LPCSTR path_of_coreclr) -> BOOL
 
     FAIL_IF(hr < 0, "failed to create delegate");
 
+    std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@" << std::endl;
     // Create sample data for the double[] argument of the managed method to be called    
-    int x = managedDelegate(444);
-    std::string ret2 = "Managed code returned: " + std::to_string(x);
-    std::cout << ret2;
+    auto x = managedDelegate(444);
+    std::cout << "Managed code returned: " << x << std::endl;
+    
+    hr = createManagedDelegate(
+        hostHandle,
+        domainId,
+        "ManagedLibraryForInjection, Version=1.0.0.0",
+        "ManagedLibraryForInjection.Program",
+        "InvokeFromMainThread",
+        (void**)&g_InvokeFromMainThread_ptr);
+    // </Snippet5>
+
+    FAIL_IF(hr < 0, "failed to create delegate");
+
+    // Create sample data for the double[] argument of the managed method to be called    
+    int y = g_InvokeFromMainThread_ptr(444);    
+    std::cout << "Managed code returned: " + std::to_string(y);;
+
 	return TRUE;		
 }
 

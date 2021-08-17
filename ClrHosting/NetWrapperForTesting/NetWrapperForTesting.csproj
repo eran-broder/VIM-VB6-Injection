@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Win32Utils\Win32Utils.csproj" />
+    <ProjectReference Include="..\ManagedLibraryForInjection\ManagedLibraryForInjection.csproj" />
   </ItemGroup>
 
 </Project>

@@ -15,9 +15,9 @@ Private Declare Function KillTimer Lib "user32" (ByVal hWnd As Long, ByVal nIDEv
 Private Declare Function Beep Lib "kernel32" (ByVal dwFreq As Long, ByVal dwDuration As Long) As Long
 Private Declare Function GetCurrentThreadId Lib "kernel32" () As Long
 
-'path to the dll in wich we handle the IPC
-Private Declare Function start_listener_thread Lib "VimInjectedIpc.dll" (ByVal handleOfWindow As Long) As Long
-Private Declare Function load_clr Lib "VimInjectedIpc.dll" (ByVal path As String) As Long
+Private Declare Function VimStart Lib "VimInProcessOrchestrator.dll" () As Long
+Private Declare Sub VimLog Lib "VimInProcessOrchestrator.dll" (ByVal message As String)
+Private Declare Function VimInvokeAgain Lib "VimInProcessOrchestrator.dll" (ByVal value As Long) As Long
 
 
 Private Declare Function CallNextHookEx Lib "user32" _
@@ -70,25 +70,31 @@ Sub InvokeInternalFunction()
     End If
 End Sub
 
-Sub LoadExternalLibAndInvoke(ByVal handleOfWindow As Long)
-    Dim ret As Long
-    'ret = start_listener_thread(handleOfWindow)
-    start_listener_thread handleOfWindow
-    Log "From the c++ got : " + CStr(ret)
-End Sub
 
-Public Sub DoSetUp(ByVal handleOfWindow As Long)
-    'm_timerId = SetTimer(handleOfWindow, 0, 1500, AddressOf TimerProc)
-    InvokeInternalFunction
-    LoadExternalLibAndInvoke handleOfWindow
-End Sub
+Public Function CallMeFromFar(ByVal arg As Long) As Long
+    CallMeFromFar = arg * 2
+End Function
+
+Public Function ExportedFunction() As Long
+    'Log "Called from C#"
+    'SOut.WriteLine "CALLED FROM C#######################"
+    ExportedFunction = 0
+End Function
+
 
 Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef lParam As msg) As Long
     If lParam.message = 1029 Then
-        Log "Well well well... Handle of window = " + CStr(lParam.hWnd) + " lParam=" + CStr(lParam.wParam) + "  wParam=" + CStr(lParam.lParam)
-        DoSetUp lParam.hWnd
+        'Log "Well well well... Handle of window = " + CStr(lParam.hWnd) + " lParam=" + CStr(lParam.wParam) + "  wParam=" + CStr(lParam.lParam)
+        Log "got ya!"
+        'DoSetUp lParam.hWnd
+        Dim ret As Long
+        ret = VimStart()
     ElseIf lParam.message = 1030 Then
         Log "!Got some love from the thread!"
+        VimLog "Logging from VB!!!!!!!!!!!"
+        Dim againRes As Long
+        againRes = VimInvokeAgain(123)
+        Log "********* Returned " + CStr(againRes)
     End If
     
     CallNextHookEx 0, idHook, wParam, VarPtr(lParam)

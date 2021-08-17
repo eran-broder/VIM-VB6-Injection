@@ -11,3 +11,8 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = True
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
+Option Explicit
+
+Public Function Foo(arg As Long) As Long
+    Foo = arg * 2
+End Function
