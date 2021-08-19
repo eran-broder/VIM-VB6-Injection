@@ -10,6 +10,8 @@ namespace ManagedLibraryForInjection
 {
 
     public delegate long ExportedFunction();
+    public delegate void SetReferral();
+    
 
     public class Program
     {
@@ -22,28 +24,16 @@ namespace ManagedLibraryForInjection
 
         public static int InvokeFromMainThread(IntPtr handle)
         {
-            Console.WriteLine($"~~~~~~~~~~~~~~~~~Thread [{PInvoke.GetCurrentThreadId()}]~~~~~~~~~~~~~~~~~~");
-            return 500;
+            EcwEmbeddedAdapterProxy.SetReferral();
+            return 222;
         }
 
         public static int DoWork(IntPtr handle)
         {
-            LoadCodeFromVB();
+            Console.WriteLine("Yheaaaa baby!!!");
             Win32Utils.PInvoke.PostMessage(handle, 1030, 0, IntPtr.Zero);
             //SetupTask(handle);
             return 333;
-        }
-
-        private static void LoadCodeFromVB()
-        {
-            Console.WriteLine("HELLO!!!!!!!");
-            var vbHandle = PInvoke.LoadLibrary("called.dll");
-            Console.WriteLine($"address of dll: {vbHandle}");
-            var addressAsIntPtr = PInvoke.GetProcAddress(vbHandle, "ExportedFunction");
-            Console.WriteLine($"address from VB: {addressAsIntPtr}");
-            var addressAsDelegate = Marshal.GetDelegateForFunctionPointer<ExportedFunction>(addressAsIntPtr);
-            var result = addressAsDelegate();
-            Console.WriteLine($"From dll = {result}");
         }
 
         private static void SetupTask(IntPtr handle)
@@ -84,9 +74,7 @@ namespace ManagedLibraryForInjection
             }
             catch (Exception e)
             {
-                
             }
-
 
         }
     }

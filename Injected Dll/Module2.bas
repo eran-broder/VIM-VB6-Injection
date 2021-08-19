@@ -15,10 +15,6 @@ Private Declare Function KillTimer Lib "user32" (ByVal hWnd As Long, ByVal nIDEv
 Private Declare Function Beep Lib "kernel32" (ByVal dwFreq As Long, ByVal dwDuration As Long) As Long
 Private Declare Function GetCurrentThreadId Lib "kernel32" () As Long
 
-Private Declare Function VimStart Lib "VimInProcessOrchestrator.dll" () As Long
-Private Declare Sub VimLog Lib "VimInProcessOrchestrator.dll" (ByVal message As String)
-Private Declare Function VimInvokeAgain Lib "VimInProcessOrchestrator.dll" (ByVal value As Long) As Long
-
 
 Private Declare Function CallNextHookEx Lib "user32" _
   (ByVal hHook As Long, _
@@ -76,25 +72,26 @@ Public Function CallMeFromFar(ByVal arg As Long) As Long
 End Function
 
 Public Function ExportedFunction() As Long
-    'Log "Called from C#"
-    'SOut.WriteLine "CALLED FROM C#######################"
-    ExportedFunction = 0
+    Log "Called from C#"
+    ExportedFunction = 333
 End Function
 
+Private Sub cout(ByVal msg As String)
+    VimLog "[VB6] : " + msg
+End Sub
 
 Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef lParam As msg) As Long
     If lParam.message = 1029 Then
-        'Log "Well well well... Handle of window = " + CStr(lParam.hWnd) + " lParam=" + CStr(lParam.wParam) + "  wParam=" + CStr(lParam.lParam)
         Log "got ya!"
-        'DoSetUp lParam.hWnd
         Dim ret As Long
-        ret = VimStart()
+        Log "Window handle is : " + CStr(lParam.hWnd)
+        ret = VimStart(lParam.hWnd)
     ElseIf lParam.message = 1030 Then
-        Log "!Got some love from the thread!"
-        VimLog "Logging from VB!!!!!!!!!!!"
+        Log "Got message !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 1030"
+        cout "Got message 1030"
         Dim againRes As Long
         againRes = VimInvokeAgain(123)
-        Log "********* Returned " + CStr(againRes)
+        cout "********* Returned " + CStr(againRes)
     End If
     
     CallNextHookEx 0, idHook, wParam, VarPtr(lParam)

@@ -1,11 +1,14 @@
 #include <iostream>
 #include <filesystem>
 #include "dynamicClrHosting.h"
+#include "ClrWrapper.h"
 
-constexpr auto kPathToClr = R"(..\ManagedLibraryForInjection\bin\Release\net5.0\publish\coreclr.dll)";
+constexpr auto kPathToClr = R"(C:\Users\broder\Documents\GitHub\VIM-VB6-Injection\ClrHosting\ManagedLibraryForInjection\bin\Release\net5.0\publish\coreclr.dll)";
 
 DWORD WINAPI ListenerThread(LPVOID lpParam);
 BOOL setup_thread(LPCSTR arg);
+
+typedef int (WINAPI* doWork_ptr)(int x);
 
 auto main() -> int
 {	
@@ -13,13 +16,15 @@ auto main() -> int
 	const auto a2 = a1.string();
 	const auto absolute_path = a2.c_str();
 	std::cout << "Loading from : " << absolute_path << std::endl;
-	//LoadClr(absolute_path);
-	setup_thread(absolute_path);
+	
+	LoadClr(absolute_path);			
+	
+	/*/setup_thread(absolute_path);
 	while(TRUE)
 	{
 		Sleep(1000);
 		std::cout << ".";
-	}
+	}*/
 }
 
 
