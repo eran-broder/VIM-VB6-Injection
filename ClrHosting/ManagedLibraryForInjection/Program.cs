@@ -28,10 +28,14 @@ namespace ManagedLibraryForInjection
             return 222;
         }
 
+        
         public static int DoWork(IntPtr handle)
         {
             Console.WriteLine("Yheaaaa baby!!!");
             Win32Utils.PInvoke.PostMessage(handle, 1030, 0, IntPtr.Zero);
+            var activeProvider = NamePipeTransportAsEventProvider.Strat("VimEmbedded")
+                .AddHandler(s => Console.WriteLine($"Got message : [{s}]"))
+                .Start();
             //SetupTask(handle);
             return 333;
         }
