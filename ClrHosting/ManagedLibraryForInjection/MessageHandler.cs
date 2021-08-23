@@ -1,22 +1,110 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
+using Brotils;
+using Microsoft.VisualBasic;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Optional.Collections;
+//TODO: change the type to readonly and use an interface
+using HandlersDictionary = System.Collections.Generic.Dictionary<string, ManagedLibraryForInjection.IMessageHandler>;
 
 namespace ManagedLibraryForInjection
 {
 
-    record Message(int Id);
-    record Response(int Id);
+    enum SpecialMessages
+    {
+        ERROR_PARSING = -1,
+        NON_EXISTING_CHANNEL = -2
+    }
+
+    public abstract record Message(int Id);
+
+    record MessageRequest(int Id, string ChannelName, string Payload) : Message(Id);
+
+    public record Response(int Id, bool IsError, string ErrorMessage, object Value) : Message(Id);
+
 
     interface ITransport
     {
         event Action<Message> GotMessage;
         void SendResponse(Response message);
     }
-    class MessageHandler
+
+    public interface IMessageHandler
+    {
+        public Task<object> HandleMessage(object message);
+        public Type MessageType { get; }
+    }
+
+    public abstract class MessageHandlerBase<TMessageType>: IMessageHandler
+    {
+        public Task<object> HandleMessage(object message)
+        {
+            return this.HandleMessage((TMessageType) message);
+        }
+
+        public Type MessageType => typeof(TMessageType);
+
+        protected abstract Task<object> HandleMessage(TMessageType message);
+    }
+
+    public class MessageHandlerCollection
     {
 
+        private readonly HandlersDictionary _handlers;
+
+        public MessageHandlerCollection(HandlersDictionary handlers)
+        {
+            _handlers = handlers;
+        }
+
+        public Task<Response> Digest(string raw)
+        {
+            //TODO: option is a bad solution, for the error gets lost!
+            var value = FunctionalExtensions.ValueOrException(() => JsonConvert.DeserializeObject<MessageRequest>(raw))
+                .Match(HandleValidMessage, e => Task.FromResult(HandleParsingError(e)));
+            return value;
+        }
+
+        private Response ErrorResponse(SpecialMessages code, string errorMessage) =>
+            ErrorResponse((int) code, errorMessage);
+
+        private Response ErrorResponse(int id, string errorMessage) =>
+            new(id, true, errorMessage, null);
+
+        private static Response HandleParsingError(Exception arg)
+        {
+            return new((int) SpecialMessages.ERROR_PARSING, true, arg.Message, null);
+        }
+
+        private Task<Response> HandleValidMessage(MessageRequest request)
+        {
+            return _handlers.GetValueOrNone(request.ChannelName)
+                .Match(
+                    h => ResponseForHandler(h, request),
+                    () => Task.FromResult(NonExistingChannel(request)));
+        }
+
+        private Response NonExistingChannel(MessageRequest request)
+        {
+            return ErrorResponse(SpecialMessages.NON_EXISTING_CHANNEL, $"No such channel: [{request.ChannelName}]");
+        }
+
+        //TODO: this function should return a value - not a response
+        private Task<Response> ResponseForHandler(IMessageHandler handler, MessageRequest request)
+        {
+            var messageAsObject = JsonConvert.DeserializeObject(request.Payload, handler.MessageType);
+            //TODO: who is in charge of error handling? this or the handler?
+            var handlerResult = handler.HandleMessage(messageAsObject);
+
+            //TODO: what happens if canceled? am I covering all?
+            return handlerResult
+                .Success(task => new Response(request.Id, false, null, task.Result))
+                .Error(task => ErrorResponse(request.Id, $"Error executing handler : [{task.Exception?.Message}]"));
+        }
     }
 }

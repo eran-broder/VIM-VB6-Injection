@@ -1,37 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Brotils;
-using Brotils.Cancelable.CancelableEventProviderGeneric;
-using Brotils.CancelableEventProvider;
 
-namespace ManagedLibraryForInjection
+namespace ManagedLibraryForInjection.IPC
 {
-
-    public class NamePipeTransportAsEventProvider
-    {
-        public static ICancelableEventProviderEmpty<string> Strat(string pipeName)
-        {
-
-            return CancelableEventProvider<string>.Create(invoke =>
-            {
-                var transport = new NamedPipeTransport();
-                transport.NewMessage += chars => invoke(new string(chars));
-                var cancel = transport.Start(pipeName, CancellationToken.None);
-                return cancel;
-            });
-        }
-    }
     //TODO: very poorly written
     class NamedPipeTransport
     {
         private CancellationToken _cancellationToken;
+        private bool _stopped = false; //TODO: really? the best you can do?
 
         public event Action<char[]> NewMessage;
 
@@ -40,7 +19,7 @@ namespace ManagedLibraryForInjection
             _cancellationToken = cancellationToken;
             Task.Run(ListenerTask, cancellationToken);
 
-            return Stop;
+            return ()=> _stopped = true; //TODO: wrap things up
         }
 
         private void ListenerTask()
@@ -56,7 +35,7 @@ namespace ManagedLibraryForInjection
             var array = new char[1024]; // TODO: how do you determine the buffer size? 
             var arraySpan = new Span<char>(array);
 
-            while (!_cancellationToken.IsCancellationRequested)
+            while (!_cancellationToken.IsCancellationRequested || _stopped)
             {
                 var readChars = reader.Read(arraySpan);
                 if (readChars > 0)
@@ -77,12 +56,5 @@ namespace ManagedLibraryForInjection
                 
             }
         }
-
-        private void Stop()
-        {
-
-        }
-
-
     }
 }
