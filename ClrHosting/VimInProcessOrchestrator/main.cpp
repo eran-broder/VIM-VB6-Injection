@@ -42,6 +42,13 @@ extern "C" __declspec(dllexport) LONG VimInvokeAgain(LONG arg)
 	return managed_delegate(reinterpret_cast<HWND>(arg));
 }
 
+extern "C" __declspec(dllexport) LONG VimInvokePendingAction(LONG arg)
+{
+	std::cout << "Lets invoke pending message :  " << arg << std::endl;
+	const auto managed_delegate = static_cast<doWork_ptr>(g_cls.GetMethod("InvokePendingMessage"));
+	return managed_delegate(reinterpret_cast<HWND>(arg));
+}
+
 extern "C" __declspec(dllexport) void VimLog(const LPCSTR msg)
 {
 	std::cout << msg << std::endl;

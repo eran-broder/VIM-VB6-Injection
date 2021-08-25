@@ -62,23 +62,20 @@ namespace ManagedLibraryForInjection
             _handlers = handlers;
         }
 
-        public Task<Response> Digest(string raw)
-        {
-            //TODO: option is a bad solution, for the error gets lost!
-            var value = FunctionalExtensions.ValueOrException(() => JsonConvert.DeserializeObject<MessageRequest>(raw))
-                .Match(HandleValidMessage, e => Task.FromResult(HandleParsingError(e)));
-            return value;
-        }
+        public Task<Response> Digest(string raw) =>
+            FunctionalExtensions
+                .ValueOrException(() => JsonConvert.DeserializeObject<MessageRequest>(raw))
+                .Match(HandleValidMessage, HandleParsingError);
 
         private Response ErrorResponse(SpecialMessages code, string errorMessage) =>
             ErrorResponse((int) code, errorMessage);
 
-        private Response ErrorResponse(int id, string errorMessage) =>
+        private static Response ErrorResponse(int id, string errorMessage) =>
             new(id, true, errorMessage, null);
 
-        private static Response HandleParsingError(Exception arg)
+        private static Task<Response> HandleParsingError(Exception arg)
         {
-            return new((int) SpecialMessages.ERROR_PARSING, true, arg.Message, null);
+            return Task.FromResult(ErrorResponse((int) SpecialMessages.ERROR_PARSING, arg.Message));
         }
 
         private Task<Response> HandleValidMessage(MessageRequest request)

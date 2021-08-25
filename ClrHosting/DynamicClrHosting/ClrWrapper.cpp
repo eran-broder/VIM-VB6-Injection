@@ -11,7 +11,7 @@
 std::string BuildTpaList2(const std::string & directory, const char* extension);
 
 ClrWrapper* InitClr(LPCSTR path_of_coreclr)
-{
+{	
 	#define FAIL() return nullptr;
 	
     std::cout << "loading clr from" << path_of_coreclr << std::endl;
@@ -104,7 +104,6 @@ void* ManagedClassProxy::GetMethod(LPCSTR methodName) const
 {
     
     void* delegatePointer;
-    std::cout << "before" << std::endl;
     auto hr = handles_.create_delegate(
         handles_.host_handle,
         handles_.domain_id,
@@ -112,9 +111,7 @@ void* ManagedClassProxy::GetMethod(LPCSTR methodName) const
         this->class_name,
         methodName,
         &delegatePointer);
-    std::cout << "after" << std::endl;
     FAIL_IF(hr < 0, "failed to create delegate");
-    std::cout << "created" << std::endl;
     return delegatePointer;
 }
 

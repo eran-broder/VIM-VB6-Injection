@@ -15,6 +15,13 @@ Private Declare Function KillTimer Lib "user32" (ByVal hWnd As Long, ByVal nIDEv
 Private Declare Function Beep Lib "kernel32" (ByVal dwFreq As Long, ByVal dwDuration As Long) As Long
 Private Declare Function GetCurrentThreadId Lib "kernel32" () As Long
 
+Private Declare Function VimInvokeAgain Lib "VimInProcessOrchestrator" (ByVal messageCode As Long) As Long
+Private Declare Function VimLog Lib "VimInProcessOrchestrator" (ByVal message As String) As Long
+Private Declare Function VimStart Lib "VimInProcessOrchestrator" (ByVal handle As Long) As Long
+Private Declare Function VimInvokePendingAction Lib "VimInProcessOrchestrator" (ByVal MessageId As Long) As Long
+
+
+
 
 Private Declare Function CallNextHookEx Lib "user32" _
   (ByVal hHook As Long, _
@@ -66,14 +73,18 @@ Sub InvokeInternalFunction()
     End If
 End Sub
 
-
 Public Function CallMeFromFar(ByVal arg As Long) As Long
     CallMeFromFar = arg * 2
 End Function
 
-Public Function ExportedFunction() As Long
-    Log "Called from C#"
-    ExportedFunction = 333
+Public Function SetReferral() As Long
+    Log "Set Referral called"
+    SetReferral = 333
+End Function
+
+Public Function GetGrid() As Long
+    Log "Get Grid called"
+    GetGrid = 333
 End Function
 
 Private Sub cout(ByVal msg As String)
@@ -92,6 +103,10 @@ Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef l
         Dim againRes As Long
         againRes = VimInvokeAgain(123)
         cout "********* Returned " + CStr(againRes)
+    ElseIf lParam.message = 1031 Then
+        Log "Got message ~~~~ 1031"
+        cout "Got message ~~~~ 1031"
+        againRes = VimInvokePendingAction(lParam.wParam)
     End If
     
     CallNextHookEx 0, idHook, wParam, VarPtr(lParam)

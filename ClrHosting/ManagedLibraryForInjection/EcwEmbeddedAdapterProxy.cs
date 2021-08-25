@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 //TODO: all these methods are a mirror of our dll. perhaps auto-generate it?
 namespace ManagedLibraryForInjection
 {
-    public static class EcwEmbeddedAdapterProxy
+    public class EcwEmbeddedAdapterProxy
     {
         [DllImport("called.dll", SetLastError = true)]
         public static extern void SetReferral();
