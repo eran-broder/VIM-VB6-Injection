@@ -73,15 +73,16 @@ namespace SetHookForInjection
 
             Task.Run(() =>
             {
-                Thread.Sleep(TimeSpan.FromSeconds(2));
+                Thread.Sleep(TimeSpan.FromSeconds(1));
                 PInvoke.PostMessage(handleOfWindow, 1029, 222, new IntPtr(333));
                 //Thread.Sleep(TimeSpan.FromSeconds(1));
                 //PInvoke.PostMessage(handleOfWindow, 1030, 222, new IntPtr(333));
+                //this.Dispatcher.BeginInvoke(new Action(Close));
             });
             ////TODO: trigger the hook and validate return value as a handshake
 
             //PInvoke.UnhookWindowsHookEx(hoolHandle);
-
+            
         }
 
         private void CopyWorkerDllToWorkingDirectory(string pathOfExe, IEnumerable<string> filesToCopy)

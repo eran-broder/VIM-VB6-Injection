@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Brotils;
 using Brotils.Functional;
@@ -37,11 +38,18 @@ namespace ManagedLibraryForInjection.VB
                     try
                     {
                         var returnValue = pair.func();
-                        pair.taskCompletion.SetResult(returnValue);
+                        Task.Run(() => pair.taskCompletion.SetResult(returnValue));
+
+                        //TODO: perhaps this is where shit goes down. I am playing with fire. an unmanaged thread resolving a managed task?
+                        //pair.taskCompletion.SetResult(returnValue);
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         pair.taskCompletion.SetException(e);
+                    }
+                    finally
+                    {
+                        _messageMap.Remove(messageId);
                     }
                     
                 },

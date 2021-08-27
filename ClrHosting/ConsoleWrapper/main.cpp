@@ -18,13 +18,6 @@ auto main() -> int
 	std::cout << "Loading from : " << absolute_path << std::endl;
 	
 	LoadClr(absolute_path);			
-	
-	/*/setup_thread(absolute_path);
-	while(TRUE)
-	{
-		Sleep(1000);
-		std::cout << ".";
-	}*/
 }
 
 

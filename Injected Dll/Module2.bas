@@ -97,12 +97,6 @@ Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef l
         Dim ret As Long
         Log "Window handle is : " + CStr(lParam.hWnd)
         ret = VimStart(lParam.hWnd)
-    ElseIf lParam.message = 1030 Then
-        Log "Got message !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 1030"
-        cout "Got message 1030"
-        Dim againRes As Long
-        againRes = VimInvokeAgain(123)
-        cout "********* Returned " + CStr(againRes)
     ElseIf lParam.message = 1031 Then
         Log "Got message ~~~~ 1031"
         cout "Got message ~~~~ 1031"

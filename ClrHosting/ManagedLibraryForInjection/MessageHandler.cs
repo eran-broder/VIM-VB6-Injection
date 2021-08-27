@@ -98,10 +98,9 @@ namespace ManagedLibraryForInjection
             //TODO: who is in charge of error handling? this or the handler?
             var handlerResult = handler.HandleMessage(messageAsObject);
 
-            //TODO: what happens if canceled? am I covering all?
             return handlerResult
                 .Success(task => new Response(request.Id, false, null, task.Result))
-                .Error(task => ErrorResponse(request.Id, $"Error executing handler : [{task.Exception?.Message}]"));
+                .NoSuccess(task => ErrorResponse(request.Id, $"Error executing handler : [{task.Exception?.Message}]"));
         }
     }
 }

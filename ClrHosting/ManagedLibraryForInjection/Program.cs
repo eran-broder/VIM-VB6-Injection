@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
@@ -20,6 +21,7 @@ namespace ManagedLibraryForInjection
     public class Program
     {
         private static MainThreadDispatcher _dispatcher;
+        private static BlockingCollection<string> _queue;
 
         static void Main(string[] args)
         {
@@ -44,32 +46,73 @@ namespace ManagedLibraryForInjection
 
         public static int DoWork(IntPtr handle)
         {
-            Console.WriteLine("Yheaaaa baby!!!");
+            Console.WriteLine($"DO Work on thread : [{Thread.CurrentThread.ManagedThreadId}]");
             PInvoke.PostMessage(handle, 1030, 0, IntPtr.Zero);
+            StartPipe();
+            StartHandlerTask(handle);
+            return 333;
+        }
 
+        private static Task StartHandlerTask(IntPtr handle)
+        {
+            return Task.Run(async () =>
+            {
+                var handlers = CreateMessageHandlers(handle);
+                var messageHandler = new MessageHandlerCollection(handlers);
+                _queue = new BlockingCollection<string>();
+                while (true)
+                {
+                    var s = _queue.Take();
+
+                    var response = messageHandler.Digest(s);
+                    DUMMY_GLOBAL.TheTask = response;
+
+                    
+                    Console.WriteLine(response);
+                    //TODO: there is a context problem here. who is waiting for the task? no one. no thread? think it over
+                    await response
+                        .Success(t => Console.WriteLine($"!!!!!!!!!!!!!SUCCESS!!!!!!!!!!!!!"))
+                        .Error(task => Console.WriteLine($"*ERROR* : {task.Exception?.Message}"))
+                        .Canceled(task =>
+                        {
+
+                            Console.WriteLine($"WTF???? why canceled??? [{Thread.CurrentThread.ManagedThreadId}]");
+                        });
+                }
+            });
+
+
+        }
+
+        class DummyVbHandler: MessageHandlerBase<VbMessage>
+        {
+            protected override Task<object> HandleMessage(VbMessage message)
+            {
+                return Task.FromResult("DUMMY RESULT" as object);
+            }
+        }
+
+        private static Dictionary<string, IMessageHandler> CreateMessageHandlers(IntPtr handle)
+        {
             _dispatcher = new MainThreadDispatcher(handle, 1031);
+
             var handlers = new Dictionary<string, IMessageHandler>
             {
-                {"VB", new VbMessageHandler(func => _dispatcher.Dispatch(func))}
+                //{"VB", new VbMessageHandler(func => _dispatcher.Dispatch(func))}
+                {"VB", new DummyVbHandler()}
             };
-            var messageHandler = new MessageHandlerCollection(handlers);
+            return handlers;
+        }
+
+        private static void StartPipe()
+        {
+            Console.WriteLine($"Starting pipe on thread : [{Thread.CurrentThread.ManagedThreadId}]");
             var activeProvider = NamePipeTransportAsEventProvider.Strat("VimEmbedded")
                 .AddHandler(s =>
                 {
                     Console.WriteLine($"Got message : [{s}]");
-                    var response = messageHandler.Digest(s);
-
-                    //TODO: there is a context problem here. who is waiting for the task? no one. no thread.
-                    response
-                        .Success(t => Console.WriteLine($"Response for:\r\n\t[{s}]\r\n\t[{t.Result}]"))
-                        .Error(task => Console.WriteLine($"*ERROR* : {task.Exception?.Message}"))
-                        .Canceled(task => Console.WriteLine("WTF???? why canceled???")).Wait();
-                })
-                .Start();
-
-            
-            return 333;
+                    _queue.Add(s);
+                }).Start();
         }
-
     }
 }
