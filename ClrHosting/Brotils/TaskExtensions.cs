@@ -15,12 +15,14 @@ namespace Brotils
             return task.Success(t => t.Result as TResult);
         }
 
-        public static Task When<T>(this Task<T> task, TaskContinuationOptions continuationOptions, Action<Task<T>> continuationAction)
+        public static Task When<T>(this Task<T> task, TaskContinuationOptions continuationOptions,
+            Action<Task<T>> continuationAction)
         {
             return task.ContinueWith(continuationAction, continuationOptions);
         }
 
-        public static Task<TNewResult> When<T, TNewResult>(this Task<T> task, TaskContinuationOptions continuationOptions, Func<Task<T>, TNewResult> continuationAction)
+        public static Task<TNewResult> When<T, TNewResult>(this Task<T> task,
+            TaskContinuationOptions continuationOptions, Func<Task<T>, TNewResult> continuationAction)
         {
             return task.ContinueWith(continuationAction, continuationOptions);
         }
@@ -38,6 +40,21 @@ namespace Brotils
             Helper.SpecificContinue(task, action, TaskContinuationOptions.OnlyOnCanceled);
 
         public static Task Always(this Task task, Action<Task> action) =>
+            Helper.SpecificContinue(task, action, TaskContinuationOptions.None);
+
+        public static Task<TNewResult> Success<TNewResult>(this Task task, Func<Task, TNewResult> action) =>
+            Helper.SpecificContinue(task, action, TaskContinuationOptions.OnlyOnRanToCompletion);
+
+        public static Task<TNewResult> Error<TNewResult>(this Task task, Func<Task, TNewResult> action) =>
+            Helper.SpecificContinue(task, action, TaskContinuationOptions.OnlyOnFaulted);
+
+        public static Task<TNewResult> NoSuccess<TNewResult>(this Task task, Func<Task, TNewResult> action) =>
+            Helper.SpecificContinue(task, action, TaskContinuationOptions.NotOnRanToCompletion);
+
+        public static Task<TNewResult> Canceled<TNewResult>(this Task task, Func<Task, TNewResult> action) =>
+            Helper.SpecificContinue(task, action, TaskContinuationOptions.OnlyOnCanceled);
+
+        public static Task<TNewResult> Always<TNewResult>(this Task task, Func<Task, TNewResult> action) =>
             Helper.SpecificContinue(task, action, TaskContinuationOptions.None);
 
         public static Task<T> Success<T>(this Task<T> task, Action<Task<T>> action) =>
@@ -83,7 +100,61 @@ namespace Brotils
             }
         }
 
+        public static Task Map(
+            this Task task,
+            Action<Task> success,
+            Action<Task> noSuccess)
+        {
+            return task.ContinueWith(task1 =>
+            {
+                if (task1.Status == TaskStatus.RanToCompletion)
+                    success(task1);
+                else
+                    noSuccess(task1);
+            });
+        }
 
+        public static Task<TNewResult> Map<TNewResult>(
+            this Task task,
+            Func<Task, TNewResult> success,
+            Func<Task, TNewResult> noSuccess)
+        {
+            return task.ContinueWith(task1 =>
+            {
+                if (task1.Status == TaskStatus.RanToCompletion)
+                    return success(task1);
+                else
+                    return noSuccess(task1);
+            });
+        }
+
+        public static Task Map<T>(
+            this Task<T> task,
+            Action<Task<T>> success,
+            Action<Task<T>> noSuccess)
+        {
+            return task.ContinueWith(task1 =>
+            {
+                if (task1.Status == TaskStatus.RanToCompletion)
+                    success(task1);
+                else
+                    noSuccess(task1);
+            });
+        }
+
+        public static Task<TNewResult> Map<T, TNewResult>(
+            this Task<T> task,
+            Func<Task<T>, TNewResult> success,
+            Func<Task<T>, TNewResult> noSucces)
+        {
+            return task.ContinueWith(task1 =>
+            {
+                if (task1.Status == TaskStatus.RanToCompletion)
+                    return success(task1);
+                else
+                    return noSucces(task1);
+            });
+        }
     }
 
     class Helper
@@ -100,6 +171,10 @@ namespace Brotils
             return task;
         }
 
-        public static Task<TNewResult> SpecificContinue<T, TNewResult>(Task<T> task, Func<Task<T>, TNewResult> action, TaskContinuationOptions option) => task.ContinueWith(action, option);
+        public static Task<TNewResult> SpecificContinue<T, TNewResult>(Task<T> task, Func<Task<T>, TNewResult> action, TaskContinuationOptions option) => 
+            task.ContinueWith(action, option);
+
+        public static Task<TNewResult> SpecificContinue<TNewResult>(Task task, Func<Task, TNewResult> action, TaskContinuationOptions option) =>
+            task.ContinueWith(action, option);
     }
 }

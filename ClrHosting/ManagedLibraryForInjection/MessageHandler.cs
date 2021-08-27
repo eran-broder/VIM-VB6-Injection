@@ -99,8 +99,7 @@ namespace ManagedLibraryForInjection
             var handlerResult = handler.HandleMessage(messageAsObject);
 
             return handlerResult
-                .Success(task => new Response(request.Id, false, null, task.Result))
-                .NoSuccess(task => ErrorResponse(request.Id, $"Error executing handler : [{task.Exception?.Message}]"));
+                .Success(task => new Response(request.Id, false, null, task.Result));
         }
     }
 }

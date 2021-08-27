@@ -18,6 +18,7 @@ namespace ManagedLibraryForInjection.VB
         {
             var functionToRun = GetFunction(message);
             return _invoker(() => functionToRun());
+            
         }
 
         //TODO: Do I handle each error? do I take care of bad function names? or just bubble the exception?

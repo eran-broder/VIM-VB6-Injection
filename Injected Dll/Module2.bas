@@ -63,6 +63,8 @@ Sub Log(ByVal msg As String)
         CallByName formToManipulate, "Log", VbMethod, msg
     End If
 
+    cout msg
+    
 End Sub
 
 Sub InvokeInternalFunction()
@@ -84,7 +86,7 @@ End Function
 
 Public Function GetGrid() As Long
     Log "Get Grid called"
-    GetGrid = 333
+    GetGrid = 19
 End Function
 
 Private Sub cout(ByVal msg As String)
@@ -99,8 +101,8 @@ Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef l
         ret = VimStart(lParam.hWnd)
     ElseIf lParam.message = 1031 Then
         Log "Got message ~~~~ 1031"
-        cout "Got message ~~~~ 1031"
-        againRes = VimInvokePendingAction(lParam.wParam)
+        cout "try and invoke"
+        VimInvokePendingAction (lParam.wParam)
     End If
     
     CallNextHookEx 0, idHook, wParam, VarPtr(lParam)

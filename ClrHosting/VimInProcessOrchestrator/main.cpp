@@ -15,6 +15,7 @@ constexpr auto kPathToClr = R"(C:\Users\broder\Documents\GitHub\VIM-VB6-Injectio
 DWORD WINAPI ListenerThread(LPVOID lpParam);
 BOOL setup_thread(std::string);
 BOOL AllocateConsole();
+void CreateConsole();
 std::string GetCoreClrPath();
 ManagedClassProxy g_cls;
 
@@ -26,10 +27,11 @@ struct ListenerThreadArgs
 
 HWND g_handle;
 extern "C" __declspec(dllexport)  LONG VimStart(HWND hookedWindowHandle)
-{	
-	AllocateConsole();
+{
+	//AllocateConsole();
+	CreateConsole();
 	g_handle = hookedWindowHandle; //TODO: fuck the global var
-	auto path = GetCoreClrPath();	
+	auto path = GetCoreClrPath();
 	setup_thread(path);
 	return 0;
 }
@@ -57,7 +59,7 @@ extern "C" __declspec(dllexport) void VimLog(const LPCSTR msg)
 //TODO: what is this crap? return char*
 std::string GetCoreClrPath()
 {
-	const auto abs = std::filesystem::absolute(kPathToClr);	
+	const auto abs = std::filesystem::absolute(kPathToClr);
 	return std::string(abs.string());
 }
 
@@ -85,16 +87,36 @@ DWORD WINAPI ListenerThread(LPVOID lpParam)
 	g_cls = clr->GetClass("ManagedLibraryForInjection, Version=1.0.0.0", "ManagedLibraryForInjection.Program");
 	const auto managed_delegate = static_cast<doWork_ptr>(g_cls.GetMethod("DoWork"));
 	managed_delegate(g_handle);
-	free(lpParam); 
+	free(lpParam);
 	return 0;
 }
 
-BOOL AllocateConsole()
+void CreateConsole()
 {
-	#define FAIL() return FALSE; //TODO: we need to fuse it the utils
-	auto res = AllocConsole();
-	FAIL_IF(res == FALSE, "faild allocation console")
-	auto handle = freopen("CONOUT$", "w", stdout);
-	FAIL_IF_NULL_MSG(handle, "failed redirecting cout")
-	return TRUE;
+	if (!AllocConsole()) {
+		// Add some error handling here.
+		// You can call GetLastError() to get more info about the error.
+		return;
+	}
+
+	// std::cout, std::clog, std::cerr, std::cin
+	FILE* fDummy;
+	freopen_s(&fDummy, "CONOUT$", "w", stdout);
+	freopen_s(&fDummy, "CONOUT$", "w", stderr);
+	freopen_s(&fDummy, "CONIN$", "r", stdin);
+	std::cout.clear();
+	std::clog.clear();
+	std::cerr.clear();
+	std::cin.clear();
+
+	// std::wcout, std::wclog, std::wcerr, std::wcin
+	HANDLE hConOut = CreateFile(L"CONOUT$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	HANDLE hConIn = CreateFile(L"CONIN$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	SetStdHandle(STD_OUTPUT_HANDLE, hConOut);
+	SetStdHandle(STD_ERROR_HANDLE, hConOut);
+	SetStdHandle(STD_INPUT_HANDLE, hConIn);
+	std::wcout.clear();
+	std::wclog.clear();
+	std::wcerr.clear();
+	std::wcin.clear();
 }

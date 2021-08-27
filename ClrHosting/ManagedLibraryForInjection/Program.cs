@@ -3,12 +3,14 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipes;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Brotils;
 using ManagedLibraryForInjection.IPC;
 using ManagedLibraryForInjection.VB;
+using Newtonsoft.Json;
 using Win32Utils;
 
 namespace ManagedLibraryForInjection
@@ -44,16 +46,15 @@ namespace ManagedLibraryForInjection
         }
 
 
+        //DO NOT MAKE ASYNC. I DO NOT KNOW THE REPERCUSSIONS
         public static int DoWork(IntPtr handle)
         {
-            Console.WriteLine($"DO Work on thread : [{Thread.CurrentThread.ManagedThreadId}]");
-            PInvoke.PostMessage(handle, 1030, 0, IntPtr.Zero);
-            StartPipe();
-            StartHandlerTask(handle);
+            var pipeWrite = StartPipe().Result;
+            StartHandlerTask(handle, pipeWrite);
             return 333;
         }
 
-        private static Task StartHandlerTask(IntPtr handle)
+        private static Task StartHandlerTask(IntPtr handle, Action<string> pipeWrite)
         {
             return Task.Run(async () =>
             {
@@ -65,54 +66,50 @@ namespace ManagedLibraryForInjection
                     var s = _queue.Take();
 
                     var response = messageHandler.Digest(s);
-                    DUMMY_GLOBAL.TheTask = response;
 
-                    
-                    Console.WriteLine(response);
                     //TODO: there is a context problem here. who is waiting for the task? no one. no thread? think it over
-                    await response
-                        .Success(t => Console.WriteLine($"!!!!!!!!!!!!!SUCCESS!!!!!!!!!!!!!"))
-                        .Error(task => Console.WriteLine($"*ERROR* : {task.Exception?.Message}"))
-                        .Canceled(task =>
+                    await response.Map(
+                        task =>
                         {
-
-                            Console.WriteLine($"WTF???? why canceled??? [{Thread.CurrentThread.ManagedThreadId}]");
-                        });
+                            Console.WriteLine($"Got back : [{task.Result.Value}]");
+                            pipeWrite(JsonConvert.SerializeObject(task.Result)); //TODO: make it async!
+                        },
+                        task => Console.WriteLine($"Could not resolve message : [{task.Status}] [{task.Exception?.Message}]")
+                    );
                 }
             });
 
 
         }
-
-        class DummyVbHandler: MessageHandlerBase<VbMessage>
-        {
-            protected override Task<object> HandleMessage(VbMessage message)
-            {
-                return Task.FromResult("DUMMY RESULT" as object);
-            }
-        }
-
         private static Dictionary<string, IMessageHandler> CreateMessageHandlers(IntPtr handle)
         {
             _dispatcher = new MainThreadDispatcher(handle, 1031);
 
             var handlers = new Dictionary<string, IMessageHandler>
             {
-                //{"VB", new VbMessageHandler(func => _dispatcher.Dispatch(func))}
-                {"VB", new DummyVbHandler()}
+                {"VB", new VbMessageHandler(func => _dispatcher.Dispatch(func))}
             };
             return handlers;
         }
 
-        private static void StartPipe()
+        //TODO: return task
+        private static Task<Action<string>> StartPipe()
         {
             Console.WriteLine($"Starting pipe on thread : [{Thread.CurrentThread.ManagedThreadId}]");
-            var activeProvider = NamePipeTransportAsEventProvider.Strat("VimEmbedded")
-                .AddHandler(s =>
-                {
-                    Console.WriteLine($"Got message : [{s}]");
-                    _queue.Add(s);
-                }).Start();
+            var pipeName = $"VimEmbedded";//_{Process.GetCurrentProcess().Id}";
+            Console.WriteLine($"listening on: {pipeName} on thread [{Thread.CurrentThread.ManagedThreadId}]");
+            NamedPipeServerStream stream =
+                new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message);
+
+            return stream.WaitForConnectionAsync().Success<Action<string>>(_ =>
+            {
+                Console.WriteLine("Client connected!");
+                StreamWrapper.Create(stream).AddHandler(s => _queue.Add(s)).Start();
+                StreamWriter writer = new StreamWriter(stream);
+                return msg => writer.Write(msg);
+            });
+
+
         }
     }
 }

@@ -10,7 +10,7 @@ namespace ManagedLibraryForInjection
 {
     public class EcwEmbeddedAdapterProxy
     {
-        [DllImport("called.dll", SetLastError = true)]
-        public static extern void SetReferral();
+        [DllImport("called.dll", SetLastError = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern int SetReferral();
     }
 }
