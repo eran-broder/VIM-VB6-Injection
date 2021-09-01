@@ -29,11 +29,25 @@ namespace SetHookForInjection
             Loaded += (sender, args) => Go();
         }
 
+        private static string Full(string relative)
+        {
+            var baseFolder = Path.GetFullPath(@"../../../../../");
+            return Path.Join(baseFolder, relative);
+        }
+
+        private static Dictionary<string, (string path, bool shouldKill)> configs =
+            new()
+            {
+                {"test", (Full(@"Playground App\Caller.exe"), true)},
+                { "ECW", (@"C:\Program Files (x86)\eClinicalWorks_MGSFL\eClinicalWorks.exe", true) }
+            };
+
+        private static string SelectedConfigName = "test";
+        private static (string path, bool shouldKill) SelectedConfig => configs[SelectedConfigName];
         private (string pathOfExe, string pathOfInjectedDll, IEnumerable<string> filesToCopy) GetFilesForDemo()
         {
-            var baseFolder = System.IO.Path.GetFullPath(@"../../../../../");
-            string Full(string relative) => Path.Join(baseFolder, relative);
-            return (Full(@"Playground App\Caller.exe"),
+            
+            return (SelectedConfig.path,
                     Full(@"Injected Dll\Called.dll"),
                     new []
                     {
@@ -48,7 +62,7 @@ namespace SetHookForInjection
         {
             var (pathOfExe, pathOfInjectedDll, filesToCopy) = GetFilesForDemo();
             CopyWorkerDllToWorkingDirectory(pathOfExe, filesToCopy);
-            var (handleOfWindow, _) = GetWindowHandleToInject(pathOfExe, "Form1");
+            var (handleOfWindow, _) = GetWindowHandleToInject(pathOfExe, SelectedConfig.shouldKill);
             var threadId = PInvoke.GetWindowThreadProcessId(handleOfWindow, out var processId);
 
             UpdateUi(processId, threadId, handleOfWindow);
@@ -100,12 +114,9 @@ namespace SetHookForInjection
         }
 
         //DEMO
-        private (IntPtr handle, int processId) GetWindowHandleToInject(string pathOfExe, string captionOfWindow)
+        private (IntPtr handle, int processId) GetWindowHandleToInject(string pathOfExe, bool shouldKill)
         {
-            var nameOfProcess = System.IO.Path.GetFileNameWithoutExtension(pathOfExe);
-            var processes = Process.GetProcessesByName(nameOfProcess);
-            processes.ToList().ForEach(p => p.Kill(true));
-            var process = Process.Start(pathOfExe);
+            var process = shouldKill ? RestartProcess(pathOfExe) : GetRunningProcess(pathOfExe);
             Thread.Sleep(TimeSpan.FromMilliseconds(500));
             var handles = Win32Utils.Win32Utils.GetTopLevelWindowsOfProcess(process.Id).ToList();
             var classes = handles.Select(Win32Utils.Win32Utils.GetClassName).ToList();
@@ -114,6 +125,20 @@ namespace SetHookForInjection
             //var formHandle = handles.First(h => Win32Utils.GetText(h).Equals("Referral (Outgoing)"));
             var formHandle = handles.First(h => Win32Utils.Win32Utils.GetClassName(h).Equals("ThunderRT6Main", StringComparison.InvariantCultureIgnoreCase));
             return (formHandle, process.Id);
+        }
+
+        private Process GetRunningProcess(string pathOfExe)
+        {
+            var nameOfProcess = System.IO.Path.GetFileNameWithoutExtension(pathOfExe);
+            var processes = Process.GetProcessesByName(nameOfProcess);
+            return processes.First();
+        }
+        private Process RestartProcess(string pathOfExe)
+        {
+            var nameOfProcess = System.IO.Path.GetFileNameWithoutExtension(pathOfExe);
+            var processes = Process.GetProcessesByName(nameOfProcess);
+            processes.ToList().ForEach(p => p.Kill(true));
+            return Process.Start(pathOfExe);
         }
 
     }

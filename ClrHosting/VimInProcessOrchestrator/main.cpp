@@ -9,8 +9,6 @@
 
 
 typedef int (WINAPI* doWork_ptr)(HWND x);
-//TODO: should be a parameter
-constexpr auto kPathToClr = R"(C:\Users\broder\Documents\GitHub\VIM-VB6-Injection\ClrHosting\ManagedLibraryForInjection\bin\Release\net5.0\publish\coreclr.dll)";
 
 DWORD WINAPI ListenerThread(LPVOID lpParam);
 BOOL setup_thread(std::string);
@@ -18,6 +16,8 @@ BOOL AllocateConsole();
 void CreateConsole();
 std::string GetCoreClrPath();
 ManagedClassProxy g_cls;
+
+constexpr auto kPathToClr = R"(C:\Users\broder\Documents\GitHub\VIM-VB6-Injection\ClrHosting\ManagedLibraryForInjection\bin\Debug\net5.0\coreclr.dll)";
 
 struct ListenerThreadArgs
 {

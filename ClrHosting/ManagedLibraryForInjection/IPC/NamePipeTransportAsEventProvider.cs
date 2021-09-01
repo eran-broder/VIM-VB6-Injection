@@ -14,22 +14,17 @@ namespace ManagedLibraryForInjection.IPC
             {
                 var stopped = false;
                 
-
-                Task.Run(() =>
+                Task.Run(async () =>
                 {
-                    StreamReader reader = new StreamReader(stream);
-                    var array = new char[1024]; // TODO: how do you determine the buffer size? 
-                    var arraySpan = new Span<char>(array);
+                    //TODO: really? think it over!
+                    var result = new byte[1024];
 
                     while (!stopped /*_cancellationToken.IsCancellationRequested*/)
                     {
-                        var readChars = reader.Read(arraySpan);
-                        if (readChars > 0)
-                        {
-                            arraySpan.Slice(1, 20);
-                            var message = arraySpan[..readChars];
-                            invoke(new string(message.ToArray())); 
-                        }
+                        //TODO: what if bytesread equals 0?
+                        var bytesRead = await stream.ReadAsync(result);
+                        var asString = System.Text.Encoding.Default.GetString(result);
+                        invoke(asString);
                     }
                 });
                 return () => stopped = true;
