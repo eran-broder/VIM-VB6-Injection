@@ -39,10 +39,11 @@ namespace SetHookForInjection
             new()
             {
                 {"test", (Full(@"Playground App\Caller.exe"), true)},
-                { "ECW", (@"C:\Program Files (x86)\eClinicalWorks_MGSFL\eClinicalWorks.exe", true) }
+                { "ecw", (@"C:\Program Files (x86)\eClinicalWorks_MGSFL\eClinicalWorks.exe", false) }
             };
 
-        private static string SelectedConfigName = "test";
+        private static string SelectedConfigName = "ecw";
+        private IntPtr _hookHandle;
         private static (string path, bool shouldKill) SelectedConfig => configs[SelectedConfigName];
         private (string pathOfExe, string pathOfInjectedDll, IEnumerable<string> filesToCopy) GetFilesForDemo()
         {
@@ -83,17 +84,13 @@ namespace SetHookForInjection
             }
             
             //TODO: change hook type
-            var hoolHandle = PInvoke.SetWindowsHookEx(PInvoke.HookType.WH_GETMESSAGE, addressAsDelegate, dll, threadId);
+            _hookHandle = PInvoke.SetWindowsHookEx(PInvoke.HookType.WH_GETMESSAGE, addressAsDelegate, dll, threadId);
 
             Task.Run(() =>
             {
                 Thread.Sleep(TimeSpan.FromSeconds(1));
                 PInvoke.PostMessage(handleOfWindow, 1029, 222, new IntPtr(333));
-                //Thread.Sleep(TimeSpan.FromSeconds(1));
-                //PInvoke.PostMessage(handleOfWindow, 1030, 222, new IntPtr(333));
-                //this.Dispatcher.BeginInvoke(new Action(Close));
             });
-            ////TODO: trigger the hook and validate return value as a handshake
 
             //PInvoke.UnhookWindowsHookEx(hoolHandle);
             
@@ -141,5 +138,14 @@ namespace SetHookForInjection
             return Process.Start(pathOfExe);
         }
 
+        private void ButtonReloadHook_OnClick(object sender, RoutedEventArgs e)
+        {
+            ReloadHook();
+        }
+
+        private void ReloadHook()
+        {
+            PInvoke.UnhookWindowsHookEx(_hookHandle);
+        }
     }
 }

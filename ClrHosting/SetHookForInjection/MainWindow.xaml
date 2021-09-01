@@ -15,5 +15,7 @@
         <TextBox Name="TextBoxProcessId" Width="100" Canvas.Left="91" Canvas.Top="8"></TextBox>
         <TextBox Name="TextBoxThreadId" Width="100" Canvas.Left="91" Canvas.Top="44" ></TextBox>
         <TextBox Name="TextBoxHandle" Width="100" Canvas.Left="91" Canvas.Top="82" ></TextBox>
+
+        <Button Name="ButtonReloadHook" Canvas.Left="91" Canvas.Top="126" Click="ButtonReloadHook_OnClick">Unload Hook</Button>
     </Canvas>
 </Window>
