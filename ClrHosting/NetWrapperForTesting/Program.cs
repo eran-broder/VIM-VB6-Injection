@@ -9,7 +9,7 @@ namespace NetWrapperForTesting
     {
         static void Main(string[] args)
         {
-            ManagedLibraryForInjection.Program.DoWork(IntPtr.Zero);
+            //ManagedLibraryForInjection.Program.DoWork(IntPtr.Zero);
             while (true)
             {
                 Console.Write(".");

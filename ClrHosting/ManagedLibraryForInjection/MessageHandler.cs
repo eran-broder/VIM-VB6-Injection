@@ -95,11 +95,20 @@ namespace ManagedLibraryForInjection
         private Task<Response> ResponseForHandler(IMessageHandler handler, MessageRequest request)
         {
             var messageAsObject = JsonConvert.DeserializeObject(request.Payload, handler.MessageType);
-            //TODO: who is in charge of error handling? this or the handler?
-            var handlerResult = handler.HandleMessage(messageAsObject);
 
-            return handlerResult
-                .Success(task => new Response(request.Id, false, null, task.Result));
+            //TODO: be decisive: are you using try\catch or are you using mapping?
+            try
+            {
+                var handlerResult = handler.HandleMessage(messageAsObject);
+                return handlerResult
+                    .Success(task => new Response(request.Id, false, null, task.Result));
+            }
+            catch(Exception e)
+            {
+                return Task.FromResult(ErrorResponse(request.Id, $"Handler [{handler}] resulted in an error: [{e.Message}]"));
+            }
+
+            
         }
     }
 }

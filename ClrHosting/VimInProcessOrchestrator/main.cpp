@@ -10,20 +10,16 @@
 
 typedef int (WINAPI* doWork_ptr)(HWND x);
 
+//TODO: disgusting code. so many globals. give it some love
 DWORD WINAPI ListenerThread(LPVOID lpParam);
 BOOL setup_thread(std::string);
-BOOL AllocateConsole();
 void CreateConsole();
 std::string GetCoreClrPath();
 ManagedClassProxy g_cls;
+ClrWrapper* g_clr; //TODO: use unique pointer
+doWork_ptr GetMethod(LPCSTR methodName);
 
 constexpr auto kPathToClr = R"(C:\Users\broder\Documents\GitHub\VIM-VB6-Injection\ClrHosting\ManagedLibraryForInjection\bin\Debug\net5.0\coreclr.dll)";
-
-struct ListenerThreadArgs
-{
-	LPCSTR clr_path;
-	ClrWrapper* clrWrapper;
-};
 
 HWND g_handle;
 extern "C" __declspec(dllexport)  LONG VimStart(HWND hookedWindowHandle)
@@ -40,16 +36,28 @@ extern "C" __declspec(dllexport)  LONG VimStart(HWND hookedWindowHandle)
 extern "C" __declspec(dllexport) LONG VimInvokeAgain(LONG arg)
 {
 	std::cout << "Invoked the function from the message loop with " << arg << std::endl;
-	auto managed_delegate = static_cast<doWork_ptr>(g_cls.GetMethod("InvokeFromMainThread"));
+	const auto managed_delegate = GetMethod("InvokeFromMainThread");
 	return managed_delegate(reinterpret_cast<HWND>(arg));
 }
 
 extern "C" __declspec(dllexport) LONG VimInvokePendingAction(LONG arg)
 {
 	std::cout << "Lets invoke pending message :  " << arg << std::endl;
-	const auto managed_delegate = static_cast<doWork_ptr>(g_cls.GetMethod("InvokePendingMessage"));
+	const auto managed_delegate = GetMethod("InvokePendingMessage");
 	return managed_delegate(reinterpret_cast<HWND>(arg));
 }
+
+extern "C" __declspec(dllexport) void VimUnload()
+{
+	const auto managed_delegate = GetMethod("Shutdown");
+	managed_delegate(0);
+	std::cout << "Back from managed shutdown. now shutdown clr itself" << std::endl;	
+	if (!g_clr->Shutdown())
+		std::cout << "ERROR shutting down" << std::endl; //TODO: facilitate logging
+	else
+		std::cout << "CLR is shut down" << std::endl; //TODO: facilitate logging
+}
+
 
 extern "C" __declspec(dllexport) void VimLog(const LPCSTR msg)
 {
@@ -74,18 +82,14 @@ BOOL setup_thread(std::string path) {
 	}
 	return TRUE;
 }
-std::unique_ptr<ClrWrapper*> g_clr = nullptr;
-
-
 
 DWORD WINAPI ListenerThread(LPVOID lpParam)
-{
-	//auto args = (ListenerThreadArgs*)lpParam;
+{	
 	auto path = (LPCSTR)lpParam;
 	std::cout << "2.Got arg :" << path << std::endl;
-	auto clr = LoadClr(path);
-	g_cls = clr->GetClass("ManagedLibraryForInjection, Version=1.0.0.0", "ManagedLibraryForInjection.Program");
-	const auto managed_delegate = static_cast<doWork_ptr>(g_cls.GetMethod("DoWork"));
+	g_clr = LoadClr(path);	
+	g_cls = g_clr->GetClass("ManagedLibraryForInjection, Version=1.0.0.0", "ManagedLibraryForInjection.Program");
+	const auto managed_delegate = GetMethod("DoWork");
 	managed_delegate(g_handle);
 	free(lpParam);
 	return 0;
@@ -119,4 +123,9 @@ void CreateConsole()
 	std::wclog.clear();
 	std::wcerr.clear();
 	std::wcin.clear();
+}
+
+doWork_ptr GetMethod(LPCSTR methodName)
+{
+	return static_cast<doWork_ptr>(g_cls.GetMethod(methodName));
 }

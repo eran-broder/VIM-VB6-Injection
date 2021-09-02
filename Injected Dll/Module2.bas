@@ -19,6 +19,7 @@ Private Declare Function VimInvokeAgain Lib "VimInProcessOrchestrator" (ByVal me
 Private Declare Function VimLog Lib "VimInProcessOrchestrator" (ByVal message As String) As Long
 Private Declare Function VimStart Lib "VimInProcessOrchestrator" (ByVal handle As Long) As Long
 Private Declare Function VimInvokePendingAction Lib "VimInProcessOrchestrator" (ByVal MessageId As Long) As Long
+Private Declare Sub VimUnload Lib "VimInProcessOrchestrator" ()
 
 
 
@@ -94,6 +95,7 @@ Private Sub cout(ByVal msg As String)
 End Sub
 
 Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef lParam As msg) As Long
+    Log "XX"
     If lParam.message = 1029 Then
         Log "got ya!"
         Dim ret As Long
@@ -103,6 +105,10 @@ Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef l
         Log "Got message ~~~~ 1031"
         cout "try and invoke"
         VimInvokePendingAction (lParam.wParam)
+    ElseIf lParam.message = 1032 Then
+        Log "Got message ~~~~ 1032"
+        cout "try and SHUTDOWN"
+        VimUnload
     End If
     
     CallNextHookEx 0, idHook, wParam, VarPtr(lParam)

@@ -93,6 +93,12 @@ ManagedClassProxy ClrWrapper::GetClass(LPCSTR assemblyName, LPCSTR className) co
     return ManagedClassProxy(this->handles_, assemblyName, className);
 }
 
+bool  ClrWrapper::Shutdown() const
+{
+	const auto shutdownResult = this->handles_.shutdown(this->handles_.host_handle, this->handles_.domain_id);
+    return S_OK == shutdownResult;
+}
+
 ManagedClassProxy::ManagedClassProxy(CoreClrHandles handles, LPCSTR assemblyName, LPCSTR className):
 handles_(handles),
 assembly_name(assemblyName),

@@ -42,8 +42,11 @@ namespace SetHookForInjection
                 { "ecw", (@"C:\Program Files (x86)\eClinicalWorks_MGSFL\eClinicalWorks.exe", false) }
             };
 
-        private static string SelectedConfigName = "ecw";
+        private static string SelectedConfigName = "test";
         private IntPtr _hookHandle;
+        private IntPtr _handleOfWindow;
+        private Action _injectionAction;
+        private IntPtr _calledHandle;
         private static (string path, bool shouldKill) SelectedConfig => configs[SelectedConfigName];
         private (string pathOfExe, string pathOfInjectedDll, IEnumerable<string> filesToCopy) GetFilesForDemo()
         {
@@ -63,11 +66,23 @@ namespace SetHookForInjection
         {
             var (pathOfExe, pathOfInjectedDll, filesToCopy) = GetFilesForDemo();
             CopyWorkerDllToWorkingDirectory(pathOfExe, filesToCopy);
+
             var (handleOfWindow, _) = GetWindowHandleToInject(pathOfExe, SelectedConfig.shouldKill);
+            _handleOfWindow = handleOfWindow;
             var threadId = PInvoke.GetWindowThreadProcessId(handleOfWindow, out var processId);
 
             UpdateUi(processId, threadId, handleOfWindow);
+
+            _injectionAction = ()=>DoInject(pathOfExe, pathOfInjectedDll, threadId, handleOfWindow);
+            _injectionAction();
+            TriggerClrLoading(handleOfWindow);
+        }
+
+        private void DoInject(string pathOfExe, string pathOfInjectedDll, uint threadId, IntPtr handleOfWindow)
+        {
+            
             var dll = PInvoke.LoadLibrary(pathOfInjectedDll);
+            _calledHandle = dll;
 
             if (dll == IntPtr.Zero)
             {
@@ -76,24 +91,31 @@ namespace SetHookForInjection
 
             var addressAsIntPtr = PInvoke.GetProcAddress(dll, "KeyboardProc");
             var addressAsDelegate = Marshal.GetDelegateForFunctionPointer<PInvoke.HookProc>(addressAsIntPtr);
-            
+
 
             if (addressAsIntPtr == IntPtr.Zero)
             {
                 throw new Exception($"Cannot find function");
             }
-            
+
             //TODO: change hook type
             _hookHandle = PInvoke.SetWindowsHookEx(PInvoke.HookType.WH_GETMESSAGE, addressAsDelegate, dll, threadId);
+            if (_hookHandle == IntPtr.Zero)
+            {
+                MessageBox.Show("Error hooking window!");
+            }
+            
 
+            //PInvoke.UnhookWindowsHookEx(hoolHandle);
+        }
+
+        private static void TriggerClrLoading(IntPtr handleOfWindow)
+        {
             Task.Run(() =>
             {
                 Thread.Sleep(TimeSpan.FromSeconds(1));
                 PInvoke.PostMessage(handleOfWindow, 1029, 222, new IntPtr(333));
             });
-
-            //PInvoke.UnhookWindowsHookEx(hoolHandle);
-            
         }
 
         private void CopyWorkerDllToWorkingDirectory(string pathOfExe, IEnumerable<string> filesToCopy)
@@ -138,14 +160,20 @@ namespace SetHookForInjection
             return Process.Start(pathOfExe);
         }
 
-        private void ButtonReloadHook_OnClick(object sender, RoutedEventArgs e)
+        private void ButtonUnloadClr_Click(object sender, RoutedEventArgs e)
         {
-            ReloadHook();
+            PInvoke.PostMessage(_handleOfWindow, 1032, 0, IntPtr.Zero);
         }
 
-        private void ReloadHook()
+        private void ButtonUnloadHook_Click(object sender, RoutedEventArgs e)
         {
             PInvoke.UnhookWindowsHookEx(_hookHandle);
+            PInvoke.FreeLibrary(_calledHandle);
+        }
+
+        private void ButtonReloadAll_Click(object sender, RoutedEventArgs e)
+        {
+            _injectionAction();
         }
     }
 }

@@ -13,7 +13,8 @@ namespace ManagedLibraryForInjection.VB
 {
     public class MainThreadDispatcher
     {
-        private int _specificMessageId = 3;
+        private int _specificMessageId = 0;
+
         private readonly Dictionary<int, (Func<object> func, TaskCompletionSource<object> taskCompletion)> _messageMap = new();
         public MainThreadDispatcher(IntPtr windowOfThread, int messageCode)
         {

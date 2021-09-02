@@ -8,27 +8,18 @@ namespace ManagedLibraryForInjection.IPC
 {
     public static class StreamWrapper
     {
-        public static ICancelableEventProviderEmpty<string> Create(Stream stream)
+        public static async Task ReadLoop(Stream stream, Action<string, CancellationToken> readCallback, CancellationToken token)
         {
-            return CancelableEventProvider<string>.Create(invoke =>
-            {
-                var stopped = false;
-                
-                Task.Run(async () =>
-                {
-                    //TODO: really? think it over!
-                    var result = new byte[1024];
+            //TODO: really? think it over!
+            var result = new byte[1024];
 
-                    while (!stopped /*_cancellationToken.IsCancellationRequested*/)
-                    {
-                        //TODO: what if bytesread equals 0?
-                        var bytesRead = await stream.ReadAsync(result);
-                        var asString = System.Text.Encoding.Default.GetString(result);
-                        invoke(asString);
-                    }
-                });
-                return () => stopped = true;
-            });
+            while (!token.IsCancellationRequested)
+            {
+                //TODO: what if bytesread equals 0?
+                var bytesRead = await stream.ReadAsync(result, token);
+                var asString = System.Text.Encoding.Default.GetString(result);
+                readCallback(asString, token);
+            }
         }
     }
 }

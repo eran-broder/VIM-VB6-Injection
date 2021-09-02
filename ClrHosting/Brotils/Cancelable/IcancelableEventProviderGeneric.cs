@@ -30,7 +30,7 @@ namespace Brotils.Cancelable
 
         }
 
-        public delegate Action InitializationHandler<T>(Action<T> eventInvoke);
+        public delegate Action InitializationHandler<out T>(Action<T> eventInvoke);
 
         public class CancelableEventProvider<T>
         {

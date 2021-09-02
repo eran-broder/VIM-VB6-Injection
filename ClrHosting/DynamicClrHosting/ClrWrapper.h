@@ -27,6 +27,8 @@ public:
 	void** CreateDelegate(LPCSTR assemblyName, LPCSTR className, LPCSTR methodName) const;
 
 	ManagedClassProxy GetClass(LPCSTR assemblyName, LPCSTR className) const;
+	
+	bool Shutdown() const;
 
 private:	
 	CoreClrHandles handles_;
