@@ -95,7 +95,6 @@ Private Sub cout(ByVal msg As String)
 End Sub
 
 Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef lParam As msg) As Long
-    Log "XX"
     If lParam.message = 1029 Then
         Log "got ya!"
         Dim ret As Long

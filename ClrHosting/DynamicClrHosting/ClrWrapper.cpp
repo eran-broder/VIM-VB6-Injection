@@ -1,16 +1,18 @@
 #include "ClrWrapper.h"
 #include <iostream>
 #include "utils.h"
-
+#include <numeric>
+#include <vector>
 #define EXTRACT_CORECLR_PROC(name, handle) reinterpret_cast<name ## _ptr>(GetProcAddress(handle, #name))
 #define FAIL() return std::nullopt;
 #define FS_SEPARATOR "\\"
 #define PATH_DELIMITER ";"
 
 
-std::string BuildTpaList2(const std::string & directory, const char* extension);
+std::string BuildTpaList(const std::string & directory, const char* extension);
+std::string BuildAppPaths(LPCSTR* app_directories, int app_directories_count);
 
-ClrWrapper* InitClr(LPCSTR path_of_coreclr)
+ClrWrapper* InitClr(LPCSTR path_of_coreclr, LPCSTR* appDirectories, int appDirectoriesCount)
 {	
 	#define FAIL() return nullptr;
 	
@@ -31,9 +33,13 @@ ClrWrapper* InitClr(LPCSTR path_of_coreclr)
     FAIL_IF_NULL(shutdownCoreClr)
 
     const auto base_path = GetFileDirectory(path_of_coreclr);
-    const auto tpa_list = BuildTpaList2(base_path, ".dll");
-    const char* propertyKeys[] = { "TRUSTED_PLATFORM_ASSEMBLIES" };
-    const char* propertyValues[] = { tpa_list.c_str() };
+    //const auto tpa_list = BuildTpaList(base_path, ".dll");
+    //const char* propertyKeys[] = { "TRUSTED_PLATFORM_ASSEMBLIES" };
+    //const char* propertyValues[] = { tpa_list.c_str() };
+
+    const char* property_keys[] = { "APP_PATHS"};
+    const auto separated_path = BuildAppPaths(appDirectories, appDirectoriesCount);
+    const char* property_values[] = { separated_path.c_str() };
 
     void* hostHandle;
     unsigned int domainId;
@@ -43,9 +49,9 @@ ClrWrapper* InitClr(LPCSTR path_of_coreclr)
     int hr = initializeCoreClr(
         base_path.c_str(),        // App base path
         "SampleHost",       // AppDomain friendly name
-        sizeof(propertyKeys) / sizeof(char*),   // Property count
-        propertyKeys,       // Property names
-        propertyValues,     // Property values
+        sizeof(property_keys) / sizeof(char*),   // Property count
+        property_keys,       // Property names
+        property_values,     // Property values
         &hostHandle,        // Host handle
         &domainId);         // AppDomain ID
 
@@ -65,6 +71,7 @@ ClrWrapper* InitClr(LPCSTR path_of_coreclr)
 ClrWrapper::ClrWrapper(CoreClrHandles handles): handles_(handles) {	
 }
 
+//TODO: who frees it? only creation appears here. leakage?
 void** ClrWrapper::CreateDelegate(LPCSTR assemblyName, LPCSTR className, LPCSTR methodName) const
 {
 	#define FAIL() return nullptr;	//TODO: is this the right way to go?
@@ -121,7 +128,7 @@ void* ManagedClassProxy::GetMethod(LPCSTR methodName) const
     return delegatePointer;
 }
 
-std::string BuildTpaList2(const std::string& directory, const char* extension)
+std::string BuildTpaList(const std::string& directory, const char* extension)
 {
     // This will add all files with a .dll extension to the TPA list.
     // This will include unmanaged assemblies (coreclr.dll, for example) that don't
@@ -161,4 +168,19 @@ std::string BuildTpaList2(const std::string& directory, const char* extension)
     }
 
     return tpa_list;
+}
+
+std::string BuildAppPaths(LPCSTR* app_directories, const int app_directories_count)
+{
+    std::vector<std::string> directoriesAsVector(app_directories_count);
+    //TODO: no for. use a proper initializer!
+    for (auto i = 0; i < app_directories_count; i++) { directoriesAsVector.emplace_back(app_directories[i]); }
+
+    std::string withSeparator = std::accumulate(std::begin(directoriesAsVector), std::end(directoriesAsVector), std::string(),
+        [](std::string& ss, std::string& s)
+        {
+            return ss.empty() ? s : ss + PATH_DELIMITER + s;
+        });
+
+    return withSeparator;
 }

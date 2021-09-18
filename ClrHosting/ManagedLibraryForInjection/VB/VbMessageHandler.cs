@@ -22,6 +22,7 @@ namespace ManagedLibraryForInjection.VB
         }
 
         //TODO: Do I handle each error? do I take care of bad function names? or just bubble the exception?
+        //TODO: Do I even need the proxy? why not call it by name and take the risk of parameter missfit? who will take care of sync?
         private Func<object> GetFunction(VbMessage message)
         {
             var function = ReflectionUtils.GetStaticFunction<EcwEmbeddedAdapterProxy>(message.FunctionName);

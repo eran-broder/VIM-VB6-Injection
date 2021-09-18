@@ -25,7 +25,7 @@ namespace ManagedLibraryForInjection.IPC
         private void ListenerTask()
         {
             var pipeName = $"VimEmbedded";//_{Process.GetCurrentProcess().Id}";
-            Console.WriteLine($"listening on: {pipeName} on thread [{Thread.CurrentThread.ManagedThreadId}]");
+            Console.WriteLine($"[X]listening on: {pipeName} on thread [{Thread.CurrentThread.ManagedThreadId}]");
             NamedPipeServerStream stream =
                 new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message);
 

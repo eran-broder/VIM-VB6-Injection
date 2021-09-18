@@ -7,7 +7,7 @@
 
 class ClrWrapper;
 class ManagedClassProxy;
-__declspec(dllexport) ClrWrapper* InitClr(LPCSTR path_of_coreclr);
+__declspec(dllexport) ClrWrapper* InitClr(LPCSTR path_of_coreclr, LPCSTR* appDirectories, int appDirectoriesCount);
 
 struct CoreClrHandles
 {

@@ -7,6 +7,10 @@ namespace Win32Utils
     public static class PInvoke
     {
         [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern uint GetProcessIdOfThread(IntPtr handle);
+
+
+        [DllImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool FreeLibrary(IntPtr hModule);
 

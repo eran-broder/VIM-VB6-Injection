@@ -23,6 +23,9 @@ namespace SetHookForInjection
 {
     public partial class MainWindow : Window
     {
+
+
+
         public MainWindow()
         {
             InitializeComponent();
@@ -73,12 +76,60 @@ namespace SetHookForInjection
 
             UpdateUi(processId, threadId, handleOfWindow);
 
-            _injectionAction = ()=>DoInject(pathOfExe, pathOfInjectedDll, threadId, handleOfWindow);
+            _injectionAction = ()=>DoInject(pathOfInjectedDll, processId, threadId, handleOfWindow);
+
+            Thread.Sleep(TimeSpan.FromSeconds(1));//TODO: very very bad. do not avoid understanding why it matters.
+
             _injectionAction();
-            TriggerClrLoading(handleOfWindow);
+            //TriggerClrLoading(handleOfWindow);
         }
 
-        private void DoInject(string pathOfExe, string pathOfInjectedDll, uint threadId, IntPtr handleOfWindow)
+        //new_injector::InjectionResult Inject(int process_id, LPCSTR dll_name, LPCSTR function_name, void* userData, size_t dataSize, DWORD* retCode)
+        private void DoInject(string pathOfInjectedDll, uint processId, uint threadId, IntPtr handleOfWindow)
+        {
+
+            var files = GetFilesForDemo();
+            var dllToInject = Full(@"ClrHosting\Debug\VimInProcessOrchestrator.dll");
+            uint ret;
+
+            var d = new DummyStruct() {value = handleOfWindow, 
+                                       pathToClr = GetClrPath(),
+                                       assemblyName = "ManagedAssemblyRunner, Version=1.0.0.0",
+                                       nameOfClass = "ManagedAssemblyRunner.Runner",
+                                       methodName = "DoWork"
+            };
+            var sizeOfPayload = Marshal.SizeOf(d);
+            IntPtr pnt = Marshal.AllocHGlobal(sizeOfPayload);
+            Marshal.StructureToPtr(d, pnt, false);
+            var result = ThreadInjector.Inject((int)processId, 
+                                                    dllToInject,
+                                                    "VimStart2",
+                                                    pnt, 
+                                                    sizeOfPayload, 
+                                                    out ret);
+            MessageBox.Show($"Result [{result}]\nReturn [{ret}]");
+        }
+
+        private string GetClrPath()=>
+            Full(@"ClrHosting\ManagedLibraryForInjection\bin\Debug\net5.0\coreclr.dll");
+        
+
+        //TODO: can it be made a record?
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+        struct DummyStruct
+        {
+            public IntPtr value;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] 
+            public string pathToClr;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string assemblyName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string nameOfClass;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string methodName;
+        }
+
+        private void DoInjectOld(string pathOfInjectedDll, uint threadId, IntPtr handleOfWindow)
         {
             
             var dll = PInvoke.LoadLibrary(pathOfInjectedDll);
@@ -157,7 +208,9 @@ namespace SetHookForInjection
             var nameOfProcess = System.IO.Path.GetFileNameWithoutExtension(pathOfExe);
             var processes = Process.GetProcessesByName(nameOfProcess);
             processes.ToList().ForEach(p => p.Kill(true));
-            return Process.Start(pathOfExe);
+            var process = Process.Start(pathOfExe);
+            process.WaitForInputIdle();
+            return process;
         }
 
         private void ButtonUnloadClr_Click(object sender, RoutedEventArgs e)
@@ -174,6 +227,11 @@ namespace SetHookForInjection
         private void ButtonReloadAll_Click(object sender, RoutedEventArgs e)
         {
             _injectionAction();
+        }
+
+        private void ButtonSendLoadMessage_OnClick(object sender, RoutedEventArgs e)
+        {
+            TriggerClrLoading(_handleOfWindow);
         }
     }
 }

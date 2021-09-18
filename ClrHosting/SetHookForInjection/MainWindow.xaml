@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:SetHookForInjection"
         mc:Ignorable="d"
         WindowStartupLocation="CenterScreen"
-        Title="MainWindow" Height="224" Width="270">
+        Title="MainWindow" Height="311" Width="270">
     <Canvas Margin="0,0,592,323">
         <Label>Process Id</Label>
         <Label Canvas.Left="8" Canvas.Top="36">Thread Id</Label>
@@ -19,5 +19,6 @@
         <Button x:Name="ButtonUnloadClr" Canvas.Left="91" Canvas.Top="114"  Width="100" Content="Unload Clr" Click="ButtonUnloadClr_Click"/>
         <Button x:Name="ButtonUnloadHook" Canvas.Left="91" Canvas.Top="139" Width="100" Content="Unload Hook" Click="ButtonUnloadHook_Click"/>
         <Button x:Name="ButtonReloadAll" Canvas.Left="91" Canvas.Top="164"  Width="100" Content="Reload" Click="ButtonReloadAll_Click"/>
+        <Button x:Name="ButtonSendLoadMessage" Canvas.Left="91" Canvas.Top="189"  Width="100" Content="Load Clr" Click="ButtonSendLoadMessage_OnClick"/>
     </Canvas>
 </Window>

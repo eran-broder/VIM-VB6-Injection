@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO.Pipes;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -54,6 +55,7 @@ namespace ManagedLibraryForInjection
         //BUT on the other hand - the code is shit this way. think it over
         public static int DoWork(IntPtr handle)
         {
+            Console.WriteLine($"Invoked [{MethodBase.GetCurrentMethod().DeclaringType}]");
             _workerThread = new Thread(_ =>
             {
                 try

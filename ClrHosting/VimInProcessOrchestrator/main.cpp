@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include <thread>
 #include <Windows.h>
 #include "dynamicClrHosting.h"
 #include "Utils.h" //TODO: bad include. should be in a shared project
@@ -10,8 +11,18 @@
 
 typedef int (WINAPI* doWork_ptr)(HWND x);
 
+struct DummyStruct
+{
+	HWND window_to_be_hooked;
+	char path_to_clr[256];
+	char assembly_name[256];
+	char class_name[256];
+	char method_name[256];
+};
+
+
 //TODO: disgusting code. so many globals. give it some love
-DWORD WINAPI ListenerThread(LPVOID lpParam);
+void ListenerThreadStd(DummyStruct userData);// (DummyStruct userData);
 BOOL setup_thread(std::string);
 void CreateConsole();
 std::string GetCoreClrPath();
@@ -22,24 +33,35 @@ doWork_ptr GetMethod(LPCSTR methodName);
 constexpr auto kPathToClr = R"(C:\Users\broder\Documents\GitHub\VIM-VB6-Injection\ClrHosting\ManagedLibraryForInjection\bin\Debug\net5.0\coreclr.dll)";
 
 HWND g_handle;
-extern "C" __declspec(dllexport)  LONG VimStart(HWND hookedWindowHandle)
+
+void foo()
+{
+	
+}
+extern "C" __declspec(dllexport)  LONG VimStart(DummyStruct userData)
 {
 	//AllocateConsole();
 	CreateConsole();
-	g_handle = hookedWindowHandle; //TODO: fuck the global var
-	auto path = GetCoreClrPath();
-	setup_thread(path);
+	g_handle = userData.window_to_be_hooked; //TODO: fuck the global var
+	std::thread t{ ListenerThreadStd, userData };
+	t.detach(); //really?
+	std::cout << "after start thread" << std::endl;
 	return 0;
 }
 
-//TODO: the whole prefix should use a macro.
-extern "C" __declspec(dllexport) LONG VimInvokeAgain(LONG arg)
+extern "C" __declspec(dllexport)  LONG VimStart2(DummyStruct * data)
 {
-	std::cout << "Invoked the function from the message loop with " << arg << std::endl;
-	const auto managed_delegate = GetMethod("InvokeFromMainThread");
-	return managed_delegate(reinterpret_cast<HWND>(arg));
+	return VimStart(*data);
 }
 
+extern "C" __declspec(dllexport)  int VimTestInject(int* arg)
+{
+	const int argValue = *arg;
+	Beep(1900, 500);
+	return argValue;
+}
+
+//TOO: Add a macro for "vim" exported functions. DRY
 extern "C" __declspec(dllexport) LONG VimInvokePendingAction(LONG arg)
 {
 	std::cout << "Lets invoke pending message :  " << arg << std::endl;
@@ -71,29 +93,23 @@ std::string GetCoreClrPath()
 	return std::string(abs.string());
 }
 
-BOOL setup_thread(std::string path) {
-	DWORD threadID = 0;
-	const auto path_clone = (char*)malloc(path.length() + 1);
-	strcpy_s(path_clone, path.length() + 1, path.c_str());
-	const auto g_hThread = CreateThread(nullptr, 0, ListenerThread, path_clone, 0, &threadID);
-	if (g_hThread == nullptr) {
-		//TODO: Log it
-		return FALSE;
-	}
-	return TRUE;
+std::string g_path; //TODO: abolish this crap
+
+//TODO: how do we handle shit that happens here?
+void ListenerThreadStd(DummyStruct data)
+{
+	#define FAIL() return;
+	g_clr = LoadClr(data.path_to_clr);
+	FAIL_IF_NULL_MSG(g_clr, "error loading clr")
+	std::cout << "clr loaded" << std::endl;
+
+	//TODO: this too should be a parameter
+	g_cls = g_clr->GetClass(data.assembly_name, data.class_name);
+
+	const auto managed_delegate = GetMethod(data.method_name);
+	managed_delegate(g_handle);
 }
 
-DWORD WINAPI ListenerThread(LPVOID lpParam)
-{	
-	auto path = (LPCSTR)lpParam;
-	std::cout << "2.Got arg :" << path << std::endl;
-	g_clr = LoadClr(path);	
-	g_cls = g_clr->GetClass("ManagedLibraryForInjection, Version=1.0.0.0", "ManagedLibraryForInjection.Program");
-	const auto managed_delegate = GetMethod("DoWork");
-	managed_delegate(g_handle);
-	free(lpParam);
-	return 0;
-}
 
 void CreateConsole()
 {
