@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Brotils\Brotils.csproj" />
+    <ProjectReference Include="..\SharedStructures\SharedStructures.csproj" />
     <ProjectReference Include="..\Win32Utils\Win32Utils.csproj" />
   </ItemGroup>
 

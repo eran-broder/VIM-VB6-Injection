@@ -8,4 +8,9 @@
     <OutputPath></OutputPath>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Brotils\Brotils.csproj" />
+    <ProjectReference Include="..\SharedStructures\SharedStructures.csproj" />
+  </ItemGroup>
+
 </Project>

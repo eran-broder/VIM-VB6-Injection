@@ -15,8 +15,15 @@ namespace ManagedLibraryForInjection.IPC
 
             while (!token.IsCancellationRequested)
             {
-                //TODO: what if bytesread equals 0?
                 var bytesRead = await stream.ReadAsync(result, token);
+                if (bytesRead == 0)
+                {
+                    throw new Exception("Client disconnected");
+                }
+                else
+                {
+                    Console.WriteLine($"Got [{bytesRead}] bytes");
+                }
                 var asString = System.Text.Encoding.Default.GetString(result);
                 readCallback(asString, token);
             }

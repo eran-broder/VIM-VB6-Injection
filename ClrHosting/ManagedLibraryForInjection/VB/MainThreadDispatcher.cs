@@ -13,14 +13,16 @@ namespace ManagedLibraryForInjection.VB
 {
     public class MainThreadDispatcher
     {
-        private int _specificMessageId = 0;
+        private int _messageIdCounter = 3;
 
         private readonly Dictionary<int, (Func<object> func, TaskCompletionSource<object> taskCompletion)> _messageMap = new();
+
+        //TODO: very bad. no timeout
         public MainThreadDispatcher(IntPtr windowOfThread, int messageCode)
         {
             this.Dispatch = action =>
             {
-                var currentMessageId = _specificMessageId++;
+                var currentMessageId = _messageIdCounter++;
                 var taskCompletionSource = new TaskCompletionSource<object>();
                 _messageMap.Add(currentMessageId, (action, taskCompletionSource));
                 PInvoke.PostMessage(windowOfThread, messageCode, currentMessageId, IntPtr.Zero);
@@ -32,20 +34,28 @@ namespace ManagedLibraryForInjection.VB
 
         public void Invoke(int messageId)
         {
+            Console.WriteLine("@@@@@@Invoking@@@@@@@");
             //TODO: should I return either?
             _messageMap.GetValueOrNone(messageId).Match(
                 pair =>
                 {
                     try
                     {
+                        Console.WriteLine("111111111111111");
                         var returnValue = pair.func();
-                        Task.Run(() => pair.taskCompletion.SetResult(returnValue));
+                        Console.WriteLine("222222222222222222");
+                        Task.Run(() =>
+                        {
+                            Console.WriteLine("333333333333333333");
+                            pair.taskCompletion.SetResult(returnValue);
+                        });
 
                         //TODO: perhaps this is where shit goes down. I am playing with fire. an unmanaged thread resolving a managed task?
                         //pair.taskCompletion.SetResult(returnValue);
                     }
                     catch (Exception e)
                     {
+                        Console.WriteLine($"4: {e.Message}");
                         pair.taskCompletion.SetException(e);
                     }
                     finally

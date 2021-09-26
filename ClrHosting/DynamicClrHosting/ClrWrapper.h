@@ -18,10 +18,11 @@ struct CoreClrHandles
 	coreclr_shutdown_ptr shutdown; //TODO: DRY. use a macro
 };
 
-class __declspec(dllexport) ClrWrapper
+class ClrWrapper
 {
 public:
 	explicit ClrWrapper(CoreClrHandles handles); //TODO: should not be public
+	~ClrWrapper();
 
 	//TODO: perhaps not use it as a dll and leverage templating?
 	void** CreateDelegate(LPCSTR assemblyName, LPCSTR className, LPCSTR methodName) const;

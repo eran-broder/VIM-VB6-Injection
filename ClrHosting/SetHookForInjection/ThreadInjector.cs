@@ -9,13 +9,13 @@ namespace SetHookForInjection
 {
     public static class ThreadInjector
     {
-        
+
         [DllImport(@"C:\vim\ParameterizedInjector\Release\ParameterizedInjectorLib.dll")]
         public static extern int Inject(int processId, //TODO: should be uint
-                                        string dllName, 
-                                        string functionName, 
-                                        IntPtr userData, 
-                                        int dataSize,
-                                        out uint retCode);
+            string dllName,
+            string functionName,
+            IntPtr userData,
+            int dataSize,
+            out uint retCode);
     }
 }

@@ -44,7 +44,6 @@ Private Type msg
     pt      As tagPOINT
 End Type
 
-
 Public Function DllMain(ByVal hInst As Long, ByVal fdwReason As Long, _
     ByVal lpvReserved As Long) As Boolean
    Select Case fdwReason
@@ -68,11 +67,14 @@ Sub Log(ByVal msg As String)
     
 End Sub
 
-Sub InvokeInternalFunction()
+
+Sub TheRealShitAddAssessment()
     Dim formToManipulate As form
-    Set formToManipulate = FormFinder.FindFormByCaption("Form1")
+    Set formToManipulate = FormFinder.FindFormByCaption("Referral (Outgoing)")
     If Not formToManipulate Is Nothing Then
         CallByName formToManipulate, "AddAseessment", VbMethod, &H639BA, False, "VIM Code", "Vim Name", "VIM Specify", "VIM Notes"
+    Else
+        Log "Cannot find the damm form!"
     End If
 End Sub
 
@@ -94,12 +96,13 @@ Private Sub cout(ByVal msg As String)
     VimLog "[VB6] : " + msg
 End Sub
 
-Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef lParam As msg) As Long
+Public Function GetMsgProc(ByVal idHook As Long, ByVal wParam As Long, ByRef lParam As msg) As Long
+    Log "."
     If lParam.message = 1029 Then
         Log "got ya!"
         Dim ret As Long
         Log "Window handle is : " + CStr(lParam.hWnd)
-        ret = VimStart(lParam.hWnd)
+        'ret = VimStart(lParam.hWnd)
     ElseIf lParam.message = 1031 Then
         Log "Got message ~~~~ 1031"
         cout "try and invoke"
@@ -107,7 +110,7 @@ Public Function KeyboardProc(ByVal idHook As Long, ByVal wParam As Long, ByRef l
     ElseIf lParam.message = 1032 Then
         Log "Got message ~~~~ 1032"
         cout "try and SHUTDOWN"
-        VimUnload
+        'VimUnload
     End If
     
     CallNextHookEx 0, idHook, wParam, VarPtr(lParam)

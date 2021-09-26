@@ -7,9 +7,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO.Pipes;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using SharedStructures;
 using Win32Utils;
 
 namespace ManagedLibraryForInjection
@@ -19,6 +21,7 @@ namespace ManagedLibraryForInjection
         private static MainThreadDispatcher _dispatcher;
         private static Thread _workerThread;
         private static CancellationTokenSource _cancellationTokenSource;
+        private static IntPtr _hookHandle;
 
         static void Main(string[] args)
         {
@@ -29,6 +32,7 @@ namespace ManagedLibraryForInjection
 
         public static int InvokePendingMessage(IntPtr handle)
         {
+            Console.WriteLine($"Managed code requested to handle message {handle}");
             _dispatcher.Invoke(handle.ToInt32());
             return 222;
         }
@@ -53,14 +57,17 @@ namespace ManagedLibraryForInjection
 
         //DO NOT MAKE ASYNC. I DO NOT KNOW THE REPERCUSSIONS
         //BUT on the other hand - the code is shit this way. think it over
-        public static int DoWork(IntPtr handle)
+        public static int DoWork(ArgumentsForManagedLibrary args)
         {
             Console.WriteLine($"Invoked [{MethodBase.GetCurrentMethod().DeclaringType}]");
             _workerThread = new Thread(_ =>
             {
                 try
                 {
-                    WorkTaskDelegate(handle).Wait();
+                    //WorkTaskDelegate(handle).Wait();
+                    var pipe = CreatePipe();
+                    HookWindow(args.PathOfInjectedDll, args.WindowToHook);
+                    StateWaitingForConnection(pipe, args.WindowToHook).Wait();
                 }
                 catch (Exception e)
                 {
@@ -71,22 +78,48 @@ namespace ManagedLibraryForInjection
             return 1;
         }
 
-        private static CancellationToken GetCancellationToken()
+        private static void HookWindow(string pathOfInjectedDll, IntPtr handleOfWindow)
         {
-            _cancellationTokenSource = new CancellationTokenSource();
-            return _cancellationTokenSource.Token;
+
+            var threadId = PInvoke.GetWindowThreadProcessId(handleOfWindow, out _);
+            Assersions.Assert(threadId != 0, $"Error getting thread for handle [{handleOfWindow}]");
+            var dll = PInvoke.LoadLibrary(pathOfInjectedDll);
+            Assersions.NotNull(dll , $"Cannot load dll from {pathOfInjectedDll}");
+            var addressAsIntPtr = PInvoke.GetProcAddress(dll, "GetMsgProc");
+            var addressAsDelegate = Marshal.GetDelegateForFunctionPointer<PInvoke.HookProc>(addressAsIntPtr);
+            Assersions.NotNull(addressAsIntPtr , $"Cannot find function in dll to hook");
+            _hookHandle = PInvoke.SetWindowsHookEx(PInvoke.HookType.WH_GETMESSAGE, addressAsDelegate, dll, threadId);
+            Assersions.NotNull(_hookHandle , $"{nameof(PInvoke.SetWindowsHookEx)} failed");
+        }
+
+        private static CancellationTokenSource GetCancellationToken()
+        {
+            return new CancellationTokenSource();
+            
         }
 
         
         //TODO: this should return both the task and the cancellation token
         //TODO: this is not good. there is an implicit state here. a state-machine is required 
-        private static async Task WorkTaskDelegate(IntPtr handle)
+        //TODO: perhaps some of the code can be invoked using the IPC?
+        /*private static async Task WorkTaskDelegate(IntPtr handle)
         {
             var token = GetCancellationToken();//TODO: check what happens if canceled during bootstrap
             var pipe = CreatePipe();
-            //await pipe.WaitForConnectionAsync(token);
             await pipe.WaitForConnectionAsync(token);
+            Console.WriteLine("Client connected"); //TODO: statemachine it
+        }*/
 
+        private static async Task StateWaitingForConnection(NamedPipeServerStream pipe, IntPtr handle)
+        {
+            var token = GetCancellationToken();//TODO: check what happens if canceled during bootstrap
+            await pipe.WaitForConnectionAsync(token.Token);
+            await StateConsumeMessages(pipe, handle, token);
+        }
+
+        private static async Task StateConsumeMessages(NamedPipeServerStream pipe, IntPtr handle, CancellationTokenSource tokenSource)
+        {
+            var token = tokenSource.Token;
             var (write, read) = CreateSyncedTunnel();
 
             var readerTask = Task.Run(() => StreamWrapper.ReadLoop(pipe, write, token), token);
@@ -98,9 +131,13 @@ namespace ManagedLibraryForInjection
             }
 
             var consumerTask = Task.Run(() => ConsumeMessages(handle, read, WriteToPipe, token), token);
-            await Task.WhenAll(readerTask, consumerTask);
+            var allTasks = new[] {readerTask, consumerTask};
+            await Task.WhenAny(allTasks);//TODO: this is a mistake. I need to explicitly identify client disconnect
+            tokenSource.Cancel();
+            pipe.Close();
+            await pipe.DisposeAsync();
+            await StateWaitingForConnection(CreatePipe(), handle);
         }
-
 
         private static (Action<string, CancellationToken> put, Func<CancellationToken, string> get) CreateSyncedTunnel()
         {
@@ -125,11 +162,12 @@ namespace ManagedLibraryForInjection
             while (!token.IsCancellationRequested)
             {
                 var rawMessage = blockingMessageProvider.Invoke(token);
+                Console.WriteLine($"Got a message {rawMessage}");
                 await messageHandler.Digest(rawMessage).Map(
             task => {
                         Console.WriteLine($"Got back : [{task.Result.Value}]");
-                        pipeWrite(JsonConvert.SerializeObject(task.Result)); 
-                    },
+                        pipeWrite(JsonConvert.SerializeObject(task.Result));  //TODO: should I await this?
+                   },
                     task => Console.WriteLine($"Could not resolve message : [{task.Status}] [{task.Exception?.Message}]")
                 );
             }
@@ -144,6 +182,12 @@ namespace ManagedLibraryForInjection
                 {"Internal", new ReflectionBasedHandler(typeof(Program))} //TODO: DRY? no real alternatives
             };
             return handlers;
+        }
+
+        public void Unload()
+        {
+            _cancellationTokenSource.Cancel();
+
         }
 
         

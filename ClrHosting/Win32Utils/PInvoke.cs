@@ -6,6 +6,10 @@ namespace Win32Utils
 {
     public static class PInvoke
     {
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+        public static extern IntPtr GetModuleHandle(string lpModuleName);
+
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern uint GetProcessIdOfThread(IntPtr handle);
 
@@ -54,6 +58,10 @@ namespace Win32Utils
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam,
+            IntPtr lParam);
 
         public delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
 

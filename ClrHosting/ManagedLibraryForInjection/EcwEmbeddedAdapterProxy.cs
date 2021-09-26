@@ -13,5 +13,8 @@ namespace ManagedLibraryForInjection
     {
         [DllImport("called.dll", SetLastError = true, CallingConvention = CallingConvention.StdCall)]
         public static extern int SetReferral();
+
+        [DllImport("called.dll", SetLastError = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern int TheRealShitAddAssessment();
     }
 }

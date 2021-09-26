@@ -71,6 +71,11 @@ ClrWrapper* InitClr(LPCSTR path_of_coreclr, LPCSTR* appDirectories, int appDirec
 ClrWrapper::ClrWrapper(CoreClrHandles handles): handles_(handles) {	
 }
 
+ClrWrapper::~ClrWrapper()
+{
+    std::cout << "XXXXXXXXXXXX Destroying clr wrapper XXXXXXXXXXX" << std::endl;
+}
+
 //TODO: who frees it? only creation appears here. leakage?
 void** ClrWrapper::CreateDelegate(LPCSTR assemblyName, LPCSTR className, LPCSTR methodName) const
 {
@@ -115,6 +120,8 @@ class_name(className)
 
 void* ManagedClassProxy::GetMethod(LPCSTR methodName) const
 {
+    std::cout << "GetMethod called for:" << methodName << std::endl;
+    std::cout << "invoking form pointer:" << handles_.create_delegate << std::endl;
     
     void* delegatePointer;
     auto hr = handles_.create_delegate(

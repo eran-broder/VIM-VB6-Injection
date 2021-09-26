@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Brotils;
+using Win32Utils;
 
 namespace ManagedLibraryForInjection.VB
 {
@@ -30,3 +31,4 @@ namespace ManagedLibraryForInjection.VB
         }
     }
 }
+ 

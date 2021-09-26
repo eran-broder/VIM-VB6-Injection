@@ -18,7 +18,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DynamicClrHosting\DynamicClrHosting.vcxproj" />
+    <ProjectReference Include="..\HookLibrary\HookLibrary.vcxproj" />
+    <ProjectReference Include="..\ManagedAssemblyRunner\ManagedAssemblyRunner.csproj" />
     <ProjectReference Include="..\ManagedLibraryForInjection\ManagedLibraryForInjection.csproj" />
+    <ProjectReference Include="..\SharedStructures\SharedStructures.csproj" />
     <ProjectReference Include="..\VimInProcessOrchestrator\VimInProcessOrchestrator.vcxproj" />
     <ProjectReference Include="..\Win32Utils\Win32Utils.csproj" />
   </ItemGroup>

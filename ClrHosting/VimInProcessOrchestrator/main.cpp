@@ -11,62 +11,51 @@
 
 typedef int (WINAPI* doWork_ptr)(HWND x);
 
-struct DummyStruct
+struct UserData
 {
-	HWND window_to_be_hooked;
 	char path_to_clr[256];
 	char assembly_name[256];
 	char class_name[256];
-	char method_name[256];
+	char method_name[256];	
+	byte more[2056];//TODO: this is only used to avoid stack slicing. think it over!	
 };
 
 
 //TODO: disgusting code. so many globals. give it some love
-void ListenerThreadStd(DummyStruct userData);// (DummyStruct userData);
+void LoadAndInvokeClr(UserData userData);// (DummyStruct userData);
 BOOL setup_thread(std::string);
 void CreateConsole();
-std::string GetCoreClrPath();
 ManagedClassProxy g_cls;
-ClrWrapper* g_clr; //TODO: use unique pointer
+std::unique_ptr<ClrWrapper> g_clr; //TODO: use unique pointer
 doWork_ptr GetMethod(LPCSTR methodName);
+doWork_ptr invoke_pending_message;
 
-constexpr auto kPathToClr = R"(C:\Users\broder\Documents\GitHub\VIM-VB6-Injection\ClrHosting\ManagedLibraryForInjection\bin\Debug\net5.0\coreclr.dll)";
-
-HWND g_handle;
-
-void foo()
+extern "C" __declspec(dllexport)  LONG VimStart(UserData userData)
 {
-	
-}
-extern "C" __declspec(dllexport)  LONG VimStart(DummyStruct userData)
-{
-	//AllocateConsole();
-	CreateConsole();
-	g_handle = userData.window_to_be_hooked; //TODO: fuck the global var
-	std::thread t{ ListenerThreadStd, userData };
-	t.detach(); //really?
+	CreateConsole();	
+	std::thread t{ LoadAndInvokeClr, userData };
+	t.detach(); 
 	std::cout << "after start thread" << std::endl;
 	return 0;
 }
 
-extern "C" __declspec(dllexport)  LONG VimStart2(DummyStruct * data)
+//TODO: decide who cleans up the data. me? the caller?
+extern "C" __declspec(dllexport)  LONG VimStart2(UserData * data)
 {
 	return VimStart(*data);
 }
 
-extern "C" __declspec(dllexport)  int VimTestInject(int* arg)
-{
-	const int argValue = *arg;
-	Beep(1900, 500);
-	return argValue;
-}
 
-//TOO: Add a macro for "vim" exported functions. DRY
-extern "C" __declspec(dllexport) LONG VimInvokePendingAction(LONG arg)
+
+
+extern "C" __declspec(dllexport) LONG InvokePendingAction(LONG arg)
 {
-	std::cout << "Lets invoke pending message :  " << arg << std::endl;
-	const auto managed_delegate = GetMethod("InvokePendingMessage");
-	return managed_delegate(reinterpret_cast<HWND>(arg));
+	std::cout << "cpp was asked to invoke pending message :  " << arg << std::endl;
+	//auto cls = g_clr->GetClass("ManagedLibraryForInjection, Version=1.0.0.0","ManagedLibraryForInjection.Program");
+	//const auto method_raw_pointer = cls.GetMethod("InvokePendingMessage");
+	//const auto method_pointer = static_cast<doWork_ptr>(method_raw_pointer);	
+	std::cout << "cpp calling c#:  " << arg << std::endl;
+	return invoke_pending_message(reinterpret_cast<HWND>(arg));
 }
 
 extern "C" __declspec(dllexport) void VimUnload()
@@ -86,36 +75,49 @@ extern "C" __declspec(dllexport) void VimLog(const LPCSTR msg)
 	std::cout << msg << std::endl;
 }
 
-//TODO: what is this crap? return char*
-std::string GetCoreClrPath()
+//TODO: rethink the signature
+extern "C" __declspec(dllexport) LRESULT GetMsgProc(
+	int    code,
+	WPARAM wParam,
+	LPARAM lParam)
 {
-	const auto abs = std::filesystem::absolute(kPathToClr);
-	return std::string(abs.string());
+	PMSG asMsg = reinterpret_cast<PMSG>(lParam);
+	if(asMsg->message == 1031)
+	{
+		auto msgId = asMsg->wParam;
+		std::cout << "Invoking pending message number[" << msgId << "]" << std::endl;
+		InvokePendingAction(msgId);
+	}
+	
+	return CallNextHookEx(nullptr, code, wParam, lParam);
 }
+
 
 std::string g_path; //TODO: abolish this crap
 
 //TODO: how do we handle shit that happens here?
-void ListenerThreadStd(DummyStruct data)
+void LoadAndInvokeClr(UserData data)
 {
 	#define FAIL() return;
-	g_clr = LoadClr(data.path_to_clr);
-	FAIL_IF_NULL_MSG(g_clr, "error loading clr")
+	g_clr.reset(LoadClr(data.path_to_clr));
+	FAIL_IF_NULL_MSG(g_clr, "error loading clr")	
 	std::cout << "clr loaded" << std::endl;
 
-	//TODO: this too should be a parameter
 	g_cls = g_clr->GetClass(data.assembly_name, data.class_name);
 
+	invoke_pending_message = GetMethod("InvokePendingMessage");
+	
 	const auto managed_delegate = GetMethod(data.method_name);
-	managed_delegate(g_handle);
+
+	managed_delegate(reinterpret_cast<HWND>(&data.more));
+	//managed_delegate(data.window_to_be_hooked);
 }
 
 
 void CreateConsole()
 {
 	if (!AllocConsole()) {
-		// Add some error handling here.
-		// You can call GetLastError() to get more info about the error.
+		// TODO: Add some error handling here.
 		return;
 	}
 

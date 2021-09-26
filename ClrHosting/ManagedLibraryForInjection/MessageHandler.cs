@@ -100,8 +100,10 @@ namespace ManagedLibraryForInjection
             try
             {
                 var handlerResult = handler.HandleMessage(messageAsObject);
-                return handlerResult
-                    .Success(task => new Response(request.Id, false, null, task.Result));
+                return handlerResult.Map(
+                    task => new Response(request.Id, false, null, task.Result),
+                    task => throw new Exception(task.Exception?.Message)
+                        );
             }
             catch(Exception e)
             {

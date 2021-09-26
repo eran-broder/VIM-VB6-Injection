@@ -16,6 +16,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using SharedStructures;
 using Win32Utils;
 using Path = System.IO.Path;
 
@@ -23,8 +24,6 @@ namespace SetHookForInjection
 {
     public partial class MainWindow : Window
     {
-
-
 
         public MainWindow()
         {
@@ -38,10 +37,16 @@ namespace SetHookForInjection
             return Path.Join(baseFolder, relative);
         }
 
+        private static string Dest(string fileName)
+        {
+            var dir = Path.GetDirectoryName(SelectedConfig.path);
+            return Path.Join(dir, fileName);
+        }
+
         private static Dictionary<string, (string path, bool shouldKill)> configs =
             new()
             {
-                {"test", (Full(@"Playground App\Caller.exe"), true)},
+                { "test", (Full(@"Playground App\Caller.exe"), true) },
                 { "ecw", (@"C:\Program Files (x86)\eClinicalWorks_MGSFL\eClinicalWorks.exe", false) }
             };
 
@@ -51,23 +56,25 @@ namespace SetHookForInjection
         private Action _injectionAction;
         private IntPtr _calledHandle;
         private static (string path, bool shouldKill) SelectedConfig => configs[SelectedConfigName];
-        private (string pathOfExe, string pathOfInjectedDll, IEnumerable<string> filesToCopy) GetFilesForDemo()
+
+        private (string pathOfExe, IEnumerable<string> filesToCopy) GetFilesForDemo()
         {
-            
+
             return (SelectedConfig.path,
-                    Full(@"Injected Dll\Called.dll"),
-                    new []
+                    new string[]
                     {
-                        Full(@"ClrHosting\Debug\VimInProcessOrchestrator.dll") ,
-                        Full(@"ClrHosting\Debug\DynamicClrHosting.dll") ,
+                        //Full(@"ClrHosting\Debug\DynamicClrHosting.dll"), //TODO: this here is a shit example of the dependency problem. a possible way to solve it is let the parameterized injector support a list of path to be added to the search, and have it update the process. 
+                        Full(@"Injected Dll\Called.dll"),
+                        Full(@"ClrHosting\Debug\VimInProcessOrchestrator.dll"),
+                        Full(@"ClrHosting\Debug\HookLibrary.dll"),
+
                     }
-                    //Full(@"SetHookForInjection\Release\DllThatLoadsClr.dll")
-                    );
+                );
         }
-        
+
         private void Go()
         {
-            var (pathOfExe, pathOfInjectedDll, filesToCopy) = GetFilesForDemo();
+            var (pathOfExe, filesToCopy) = GetFilesForDemo();
             CopyWorkerDllToWorkingDirectory(pathOfExe, filesToCopy);
 
             var (handleOfWindow, _) = GetWindowHandleToInject(pathOfExe, SelectedConfig.shouldKill);
@@ -76,11 +83,13 @@ namespace SetHookForInjection
 
             UpdateUi(processId, threadId, handleOfWindow);
 
-            _injectionAction = ()=>DoInject(pathOfInjectedDll, processId, threadId, handleOfWindow);
-
-            Thread.Sleep(TimeSpan.FromSeconds(1));//TODO: very very bad. do not avoid understanding why it matters.
+            _injectionAction = () => DoInject("VimInProcessOrchestrator.dll", processId, threadId, handleOfWindow);
 
             _injectionAction();
+
+            Thread.Sleep(TimeSpan.FromSeconds(1));//TODO: very very bad. sync it. you can tell when the channel is ready
+
+            //TODO: no way to do it from within the injected dll? would be more harmonious and decoupled if so
             //TriggerClrLoading(handleOfWindow);
         }
 
@@ -88,77 +97,43 @@ namespace SetHookForInjection
         private void DoInject(string pathOfInjectedDll, uint processId, uint threadId, IntPtr handleOfWindow)
         {
 
-            var files = GetFilesForDemo();
-            var dllToInject = Full(@"ClrHosting\Debug\VimInProcessOrchestrator.dll");
             uint ret;
 
-            var d = new DummyStruct() {value = handleOfWindow, 
-                                       pathToClr = GetClrPath(),
-                                       assemblyName = "ManagedAssemblyRunner, Version=1.0.0.0",
-                                       nameOfClass = "ManagedAssemblyRunner.Runner",
-                                       methodName = "DoWork"
+            var userData = new MainClrInfo()
+            {
+                pathToClr = GetClrPath(),
+                assemblyName = "ManagedAssemblyRunner, Version=1.0.0.0",
+                nameOfClass = "ManagedAssemblyRunner.Runner",
+                methodName = "DoWork",
+
+                AssemblyInfo = new AssemblyRunnerInfo()
+                {
+                    assemblyPath = Full(@"ClrHosting\ManagedLibraryForInjection\bin\Debug\net5.0\ManagedLibraryForInjection.dll"),
+                    nameOfClass = "ManagedLibraryForInjection.Program",
+                    methodName = "DoWork",
+                    ArgumentsForManagedLibrary = new ArgumentsForManagedLibrary()
+                    {
+                        WindowToHook = handleOfWindow,
+                        PathOfInjectedDll = pathOfInjectedDll
+                    }
+                }
             };
-            var sizeOfPayload = Marshal.SizeOf(d);
+
+            var sizeOfPayload = Marshal.SizeOf(userData);
             IntPtr pnt = Marshal.AllocHGlobal(sizeOfPayload);
-            Marshal.StructureToPtr(d, pnt, false);
-            var result = ThreadInjector.Inject((int)processId, 
-                                                    dllToInject,
+            Marshal.StructureToPtr(userData, pnt, false);
+
+            var result = ThreadInjector.Inject((int)processId,
+                                                    pathOfInjectedDll,
                                                     "VimStart2",
-                                                    pnt, 
-                                                    sizeOfPayload, 
+                                                    pnt,
+                                                    sizeOfPayload,
                                                     out ret);
-            MessageBox.Show($"Result [{result}]\nReturn [{ret}]");
+            //MessageBox.Show($"Result [{result}]\nReturn [{ret}]");
         }
 
-        private string GetClrPath()=>
+        private string GetClrPath() =>
             Full(@"ClrHosting\ManagedLibraryForInjection\bin\Debug\net5.0\coreclr.dll");
-        
-
-        //TODO: can it be made a record?
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        struct DummyStruct
-        {
-            public IntPtr value;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] 
-            public string pathToClr;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-            public string assemblyName;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-            public string nameOfClass;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
-            public string methodName;
-        }
-
-        private void DoInjectOld(string pathOfInjectedDll, uint threadId, IntPtr handleOfWindow)
-        {
-            
-            var dll = PInvoke.LoadLibrary(pathOfInjectedDll);
-            _calledHandle = dll;
-
-            if (dll == IntPtr.Zero)
-            {
-                throw new Exception($"module could not be loaded [{Marshal.GetLastWin32Error()}]");
-            }
-
-            var addressAsIntPtr = PInvoke.GetProcAddress(dll, "KeyboardProc");
-            var addressAsDelegate = Marshal.GetDelegateForFunctionPointer<PInvoke.HookProc>(addressAsIntPtr);
-
-
-            if (addressAsIntPtr == IntPtr.Zero)
-            {
-                throw new Exception($"Cannot find function");
-            }
-
-            //TODO: change hook type
-            _hookHandle = PInvoke.SetWindowsHookEx(PInvoke.HookType.WH_GETMESSAGE, addressAsDelegate, dll, threadId);
-            if (_hookHandle == IntPtr.Zero)
-            {
-                MessageBox.Show("Error hooking window!");
-            }
-            
-
-            //PInvoke.UnhookWindowsHookEx(hoolHandle);
-        }
 
         private static void TriggerClrLoading(IntPtr handleOfWindow)
         {
@@ -171,7 +146,6 @@ namespace SetHookForInjection
 
         private void CopyWorkerDllToWorkingDirectory(string pathOfExe, IEnumerable<string> filesToCopy)
         {
-            
             string DestPath(string f) => Path.Join(Path.GetDirectoryName(pathOfExe), Path.GetFileName(f));
             filesToCopy.ToList().ForEach(f => File.Copy(f, DestPath(f), true));
         }
