@@ -3,6 +3,12 @@ using System.Runtime.InteropServices;
 
 namespace SharedStructures
 {
+
+    public interface IContextManager
+    {
+        public void UnloadCurrent();
+    }
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
     public struct MainClrInfo
     {

@@ -25,8 +25,11 @@ namespace ManagedLibraryForInjection.VB
                 var currentMessageId = _messageIdCounter++;
                 var taskCompletionSource = new TaskCompletionSource<object>();
                 _messageMap.Add(currentMessageId, (action, taskCompletionSource));
-                PInvoke.PostMessage(windowOfThread, messageCode, currentMessageId, IntPtr.Zero);
-                return taskCompletionSource.Task;
+                Console.WriteLine("Posting message to window");
+                var postSuccess = PInvoke.PostMessage(windowOfThread, messageCode, currentMessageId, IntPtr.Zero);
+                return postSuccess
+                    ? taskCompletionSource.Task
+                    : Task.FromException<object>(new Exception("Failed to post message to window"));
             };
         }
 

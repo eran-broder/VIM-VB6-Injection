@@ -69,6 +69,7 @@ End Sub
 
 
 Sub TheRealShitAddAssessment()
+    Log "YYYYYYYYYYYYYYYY"
     Dim formToManipulate As form
     Set formToManipulate = FormFinder.FindFormByCaption("Referral (Outgoing)")
     If Not formToManipulate Is Nothing Then

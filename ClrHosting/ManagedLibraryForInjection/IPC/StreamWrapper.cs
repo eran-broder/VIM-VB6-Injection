@@ -8,23 +8,24 @@ namespace ManagedLibraryForInjection.IPC
 {
     public static class StreamWrapper
     {
+        //When task is completed, it means the client has disconnected.
+        //TODO: should I make it more explicit?
         public static async Task ReadLoop(Stream stream, Action<string, CancellationToken> readCallback, CancellationToken token)
         {
             //TODO: really? think it over!
             var result = new byte[1024];
 
-            while (!token.IsCancellationRequested)
+            while (true)
             {
+                token.ThrowIfCancellationRequested();
+
                 var bytesRead = await stream.ReadAsync(result, token);
                 if (bytesRead == 0)
                 {
-                    throw new Exception("Client disconnected");
+                    Console.WriteLine("well...stopping the loop");
+                    return;
                 }
-                else
-                {
-                    Console.WriteLine($"Got [{bytesRead}] bytes");
-                }
-                var asString = System.Text.Encoding.Default.GetString(result);
+                var asString = System.Text.Encoding.Default.GetString(result, 0, bytesRead);
                 readCallback(asString, token);
             }
         }

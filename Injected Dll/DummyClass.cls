@@ -13,6 +13,20 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
 Option Explicit
 
-Public Function Foo(arg As Long) As Long
+Public Static Function Foo(arg As Long) As Long
     Foo = arg * 2
+End Function
+
+Public Sub Goo()
+    
+End Sub
+
+Public Static Sub Xoo()
+
+End Sub
+
+Public Function Boo() As Long
+
+    Boo = 222
+
 End Function

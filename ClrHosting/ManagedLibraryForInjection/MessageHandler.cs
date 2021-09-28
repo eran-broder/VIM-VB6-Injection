@@ -10,7 +10,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Optional.Collections;
 //TODO: change the type to readonly and use an interface
-using HandlersDictionary = System.Collections.Generic.Dictionary<string, ManagedLibraryForInjection.IMessageHandler>;
+using HandlersDictionary = System.Collections.Generic.IReadOnlyDictionary<string, ManagedLibraryForInjection.IMessageHandler>;
 
 namespace ManagedLibraryForInjection
 {
@@ -52,22 +52,15 @@ namespace ManagedLibraryForInjection
         protected abstract Task<object> HandleMessage(TMessageType message);
     }
 
-    public class MessageHandlerCollection
+    public static class MessageDigester
     {
 
-        private readonly HandlersDictionary _handlers;
-
-        public MessageHandlerCollection(HandlersDictionary handlers)
-        {
-            _handlers = handlers;
-        }
-
-        public Task<Response> Digest(string raw) =>
+        public static Task<Response> Digest(string raw, HandlersDictionary handlers) =>
             FunctionalExtensions
                 .ValueOrException(() => JsonConvert.DeserializeObject<MessageRequest>(raw))
-                .Match(HandleValidMessage, HandleParsingError);
+                .Match(request => HandleValidMessage(request, handlers), HandleParsingError);
 
-        private Response ErrorResponse(SpecialMessages code, string errorMessage) =>
+        private static Response ErrorResponse(SpecialMessages code, string errorMessage) =>
             ErrorResponse((int) code, errorMessage);
 
         private static Response ErrorResponse(int id, string errorMessage) =>
@@ -78,27 +71,27 @@ namespace ManagedLibraryForInjection
             return Task.FromResult(ErrorResponse((int) SpecialMessages.ERROR_PARSING, arg.Message));
         }
 
-        private Task<Response> HandleValidMessage(MessageRequest request)
+        private static Task<Response> HandleValidMessage(MessageRequest request, HandlersDictionary handlers)
         {
-            return _handlers.GetValueOrNone(request.ChannelName)
+            return handlers.GetValueOrNone(request.ChannelName)
                 .Match(
                     h => ResponseForHandler(h, request),
                     () => Task.FromResult(NonExistingChannel(request)));
         }
 
-        private Response NonExistingChannel(MessageRequest request)
+        private static Response NonExistingChannel(MessageRequest request)
         {
             return ErrorResponse(SpecialMessages.NON_EXISTING_CHANNEL, $"No such channel: [{request.ChannelName}]");
         }
 
         //TODO: this function should return a value - not a response
-        private Task<Response> ResponseForHandler(IMessageHandler handler, MessageRequest request)
+        private static Task<Response> ResponseForHandler(IMessageHandler handler, MessageRequest request)
         {
-            var messageAsObject = JsonConvert.DeserializeObject(request.Payload, handler.MessageType);
-
             //TODO: be decisive: are you using try\catch or are you using mapping?
             try
             {
+                var messageAsObject = JsonConvert.DeserializeObject(request.Payload, handler.MessageType);
+
                 var handlerResult = handler.HandleMessage(messageAsObject);
                 return handlerResult.Map(
                     task => new Response(request.Id, false, null, task.Result),

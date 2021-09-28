@@ -4,8 +4,7 @@ using System.Threading.Tasks;
 
 namespace ManagedLibraryForInjection.VB
 {
-
-    internal record InternalAffairsMessage(string MethodName);
+    internal record InternalAffairsMessage(string FunctionName, object[] Parameters);
 
     //TODO: support parameters
     class ReflectionBasedHandler : MessageHandlerBase<InternalAffairsMessage>
@@ -18,9 +17,9 @@ namespace ManagedLibraryForInjection.VB
         }
         protected override Task<object> HandleMessage(InternalAffairsMessage message)
         {
-            return Optional.OptionExtensions.SomeNotNull(ReflectedType.GetMethod(message.MethodName))
-                .Match(info => Task.FromResult(info.Invoke(null, new object[]{})),
-                    () => throw new Exception($"Type [{ReflectedType}] has no method [{message.MethodName}]"));
+            return Optional.OptionExtensions.SomeNotNull(ReflectedType.GetMethod(message.FunctionName))
+                .Match(info => Task.FromResult(info.Invoke(null, message.Parameters)),
+                    () => throw new Exception($"Type [{ReflectedType}] has no method [{message.FunctionName}]"));
             
         }
     }
