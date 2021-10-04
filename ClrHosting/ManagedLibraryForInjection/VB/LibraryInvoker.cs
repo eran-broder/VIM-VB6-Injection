@@ -12,6 +12,7 @@ using Win32Utils;
 
 namespace ManagedLibraryForInjection.VB
 {
+    record VbMessage(string FunctionName, object[] Parameters);
     class LibraryInvoker : MessageHandlerBase<VbMessage>, IDisposable
     {
         private readonly Func<Func<object>, Task<object>> _invoker;
@@ -35,12 +36,9 @@ namespace ManagedLibraryForInjection.VB
 
         }
 
-        //TODO: Do I handle each error? do I take care of bad function names? or just bubble the exception?
-        //TODO: Do I even need the proxy? why not call it by name and take the risk of parameter missfit? who will take care of sync?
         private Func<object> GetFunction(VbMessage message)
         {
             var @delegate = CreateLibraryDelegate(message);
-
             return () => @delegate.DynamicInvoke(message.Parameters);
         }
 
@@ -55,9 +53,9 @@ namespace ManagedLibraryForInjection.VB
             return @delegate;
         }
 
-        //TODO: this is a bomb waiting to blow.
         public static class DelegateCreator
         {
+            //this is a bomb waiting to blow. I did not find any other way
             private static readonly Func<Type[], Type> MakeNewCustomDelegate = 
                 (Func<Type[], Type>)Delegate.CreateDelegate(typeof(Func<Type[], Type>), typeof(Expression).Assembly.GetType("System.Linq.Expressions.Compiler.DelegateHelpers").GetMethod("MakeNewCustomDelegate", BindingFlags.NonPublic | BindingFlags.Static));
 

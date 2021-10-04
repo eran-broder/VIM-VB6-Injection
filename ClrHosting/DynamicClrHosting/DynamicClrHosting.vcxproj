@@ -145,12 +145,6 @@
   <ItemGroup>
     <ClCompile Include="ClrWrapper.cpp" />
     <ClCompile Include="dllMain.cpp" />
-    <ClCompile Include="dynamicClrHosting.cpp">
-      <PreprocessToFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</PreprocessToFile>
-      <PreprocessToFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</PreprocessToFile>
-      <PreprocessToFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</PreprocessToFile>
-      <PreprocessToFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</PreprocessToFile>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ClrWrapper.h" />

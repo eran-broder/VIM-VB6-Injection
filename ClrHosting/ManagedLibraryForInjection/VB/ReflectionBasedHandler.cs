@@ -6,7 +6,6 @@ namespace ManagedLibraryForInjection.VB
 {
     internal record InternalAffairsMessage(string FunctionName, object[] Parameters);
 
-    //TODO: support parameters
     class ReflectionBasedHandler : MessageHandlerBase<InternalAffairsMessage>
     {
         public Type ReflectedType { get; }

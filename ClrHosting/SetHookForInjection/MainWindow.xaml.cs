@@ -51,10 +51,8 @@ namespace SetHookForInjection
             };
 
         private static string SelectedConfigName = "test";
-        private IntPtr _hookHandle;
         private IntPtr _handleOfWindow;
         private Action _injectionAction;
-        private IntPtr _calledHandle;
         private static (string path, bool shouldKill) SelectedConfig => configs[SelectedConfigName];
 
         private (string pathOfExe, IEnumerable<string> filesToCopy) GetFilesForDemo()
@@ -76,7 +74,7 @@ namespace SetHookForInjection
         {
             var (pathOfExe, filesToCopy) = GetFilesForDemo();
             CopyWorkerDllToWorkingDirectory(pathOfExe, filesToCopy);
-
+            
             var (handleOfWindow, _) = GetWindowHandleToInject(pathOfExe, SelectedConfig.shouldKill);
             _handleOfWindow = handleOfWindow;
             var threadId = PInvoke.GetWindowThreadProcessId(handleOfWindow, out var processId);
@@ -86,11 +84,6 @@ namespace SetHookForInjection
             _injectionAction = () => DoInject("VimInProcessOrchestrator.dll", processId, threadId, handleOfWindow);
 
             _injectionAction();
-
-            Thread.Sleep(TimeSpan.FromSeconds(1));//TODO: very very bad. sync it. you can tell when the channel is ready
-
-            //TODO: no way to do it from within the injected dll? would be more harmonious and decoupled if so
-            //TriggerClrLoading(handleOfWindow);
         }
 
         //new_injector::InjectionResult Inject(int process_id, LPCSTR dll_name, LPCSTR function_name, void* userData, size_t dataSize, DWORD* retCode)
@@ -103,6 +96,8 @@ namespace SetHookForInjection
             {
                 pathToClr = GetClrPath(),
                 assemblyName = "ManagedAssemblyRunner, Version=1.0.0.0",
+                trustedDirectories = $"{Full(@"ClrHosting\ManagedLibraryForInjection\bin\Debug\net5.0")};" +
+                                     $"{Full(@"ClrHosting\ManagedAssemblyRunner\bin\Debug\net5.0")}",
                 nameOfClass = "ManagedAssemblyRunner.Runner",
                 methodName = "DoWork",
 
@@ -119,17 +114,43 @@ namespace SetHookForInjection
                 }
             };
 
+            var args = new Dictionary<string, object>();
+            args["pid"] = processId;
+            args["dll"] = pathOfInjectedDll;
+            args["function"] = "VimStart";
+            args["b64data"] = Convert.ToBase64String(GetBytes(userData));
+
+            var stringArg = args.Select(pair => $"--{pair.Key}={pair.Value}");
+            Process.Start(
+                //@"C:\Users\broder\Documents\GitHub\VIM-VB6-Injection\ClrHosting\Injector\bin\Debug\net5.0\Injector.exe",
+                "Injector.exe",
+                stringArg);
+
+            return;
+
             var sizeOfPayload = Marshal.SizeOf(userData);
             IntPtr pnt = Marshal.AllocHGlobal(sizeOfPayload);
             Marshal.StructureToPtr(userData, pnt, false);
 
-            var result = ThreadInjector.Inject((int)processId,
+            var result = ThreadInjector.Inject(processId,
                                                     pathOfInjectedDll,
-                                                    "VimStart2",
+                                                    "VimStart",
                                                     pnt,
                                                     sizeOfPayload,
                                                     out ret);
-            //MessageBox.Show($"Result [{result}]\nReturn [{ret}]");
+            
+        }
+
+        byte[] GetBytes<T>(T str)
+        {
+            int size = Marshal.SizeOf(str);
+            byte[] arr = new byte[size];
+
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            Marshal.StructureToPtr(str, ptr, true);
+            Marshal.Copy(ptr, arr, 0, size);
+            Marshal.FreeHGlobal(ptr);
+            return arr;
         }
 
         private string GetClrPath() =>
@@ -190,12 +211,6 @@ namespace SetHookForInjection
         private void ButtonUnloadClr_Click(object sender, RoutedEventArgs e)
         {
             PInvoke.PostMessage(_handleOfWindow, 1032, 0, IntPtr.Zero);
-        }
-
-        private void ButtonUnloadHook_Click(object sender, RoutedEventArgs e)
-        {
-            PInvoke.UnhookWindowsHookEx(_hookHandle);
-            PInvoke.FreeLibrary(_calledHandle);
         }
 
         private void ButtonReloadAll_Click(object sender, RoutedEventArgs e)

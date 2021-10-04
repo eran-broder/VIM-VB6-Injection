@@ -17,7 +17,6 @@
         <TextBox Name="TextBoxHandle" Width="100" Canvas.Left="91" Canvas.Top="82" ></TextBox>
 
         <Button x:Name="ButtonUnloadClr" Canvas.Left="91" Canvas.Top="114"  Width="100" Content="Unload Clr" Click="ButtonUnloadClr_Click"/>
-        <Button x:Name="ButtonUnloadHook" Canvas.Left="91" Canvas.Top="139" Width="100" Content="Unload Hook" Click="ButtonUnloadHook_Click"/>
         <Button x:Name="ButtonReloadAll" Canvas.Left="91" Canvas.Top="164"  Width="100" Content="Reload" Click="ButtonReloadAll_Click"/>
         <Button x:Name="ButtonSendLoadMessage" Canvas.Left="91" Canvas.Top="189"  Width="100" Content="Load Clr" Click="ButtonSendLoadMessage_OnClick"/>
     </Canvas>

@@ -11,7 +11,7 @@ namespace SetHookForInjection
     {
 
         [DllImport(@"C:\vim\ParameterizedInjector\Release\ParameterizedInjectorLib.dll")]
-        public static extern int Inject(int processId, //TODO: should be uint
+        public static extern int Inject(uint processId,
             string dllName,
             string functionName,
             IntPtr userData,

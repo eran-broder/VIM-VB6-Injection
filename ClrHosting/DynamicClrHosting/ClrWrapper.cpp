@@ -3,6 +3,7 @@
 #include "utils.h"
 #include <numeric>
 #include <vector>
+#include <algorithm>
 #define EXTRACT_CORECLR_PROC(name, handle) reinterpret_cast<name ## _ptr>(GetProcAddress(handle, #name))
 #define FAIL() return std::nullopt;
 #define FS_SEPARATOR "\\"
@@ -71,15 +72,10 @@ ClrWrapper* InitClr(LPCSTR path_of_coreclr, LPCSTR* appDirectories, int appDirec
 ClrWrapper::ClrWrapper(CoreClrHandles handles): handles_(handles) {	
 }
 
-ClrWrapper::~ClrWrapper()
-{
-    std::cout << "XXXXXXXXXXXX Destroying clr wrapper XXXXXXXXXXX" << std::endl;
-}
-
-//TODO: who frees it? only creation appears here. leakage?
+//TODO: who frees it?
 void** ClrWrapper::CreateDelegate(LPCSTR assemblyName, LPCSTR className, LPCSTR methodName) const
 {
-	#define FAIL() return nullptr;	//TODO: is this the right way to go?
+	#define FAIL() return nullptr;	
 	
     void** managedDelegate;
     
@@ -91,15 +87,13 @@ void** ClrWrapper::CreateDelegate(LPCSTR assemblyName, LPCSTR className, LPCSTR 
         assemblyName,
         className,
         methodName,
-        (void**)&managedDelegate);
-    // </Snippet5>
+        (void**)&managedDelegate);    
 
     FAIL_IF(hr < 0, "failed to create delegate");
 
     return managedDelegate;
 }
 
-//TODO: no error handling! should there be any?
 ManagedClassProxy ClrWrapper::GetClass(LPCSTR assemblyName, LPCSTR className) const
 {
     return ManagedClassProxy(this->handles_, assemblyName, className);
@@ -183,7 +177,9 @@ std::string BuildAppPaths(LPCSTR* app_directories, const int app_directories_cou
     //TODO: no for. use a proper initializer!
     for (auto i = 0; i < app_directories_count; i++) { directoriesAsVector.emplace_back(app_directories[i]); }
 
-    std::string withSeparator = std::accumulate(std::begin(directoriesAsVector), std::end(directoriesAsVector), std::string(),
+    std::string withSeparator = std::accumulate(std::begin(directoriesAsVector), 
+												 std::end(directoriesAsVector), 
+												  std::string(),
         [](std::string& ss, std::string& s)
         {
             return ss.empty() ? s : ss + PATH_DELIMITER + s;

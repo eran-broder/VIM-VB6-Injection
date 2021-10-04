@@ -60,8 +60,11 @@ namespace ManagedLibraryForInjection
                 try
                 {
                     var pipe = CreatePipe();
+                    Console.WriteLine($"HANDLE [{args.WindowToHook}]");
                     _hookHandle = HookWindow(args.PathOfInjectedDll, args.WindowToHook);
-                    StateWaitingForConnection(pipe, args.WindowToHook).Wait();
+                    StateWaitingForConnection(pipe, args.WindowToHook).Map(
+                        task => { },
+                        task => Console.WriteLine($"main task failed : [{task.Exception}]")).Wait(); //TODO: what should we do?
                 }
                 catch (Exception e)
                 {
@@ -74,6 +77,7 @@ namespace ManagedLibraryForInjection
 
         private static IntPtr HookWindow(string pathOfInjectedDll, IntPtr handleOfWindow)
         {
+            Console.WriteLine($"Hooking from : {pathOfInjectedDll}");
             var threadId = PInvoke.GetWindowThreadProcessId(handleOfWindow, out _);
             Assersions.Assert(threadId != 0, $"Error getting thread for handle [{handleOfWindow}]");
             var dll = PInvoke.LoadLibrary(pathOfInjectedDll);
@@ -88,11 +92,11 @@ namespace ManagedLibraryForInjection
 
         private static async Task StateWaitingForConnection(NamedPipeServerStream pipe, IntPtr handle)
         {
-            var token = new CancellationTokenSource();
+            _cancellationTokenSource = new CancellationTokenSource();
             Console.WriteLine("Awaiting connection");
-            await pipe.WaitForConnectionAsync(token.Token);
+            await pipe.WaitForConnectionAsync(_cancellationTokenSource.Token);
             Console.WriteLine("Connected");
-            await StateConsumeMessages(pipe, handle, token);
+            await StateConsumeMessages(pipe, handle, _cancellationTokenSource);
         }
 
         private static async Task StateConsumeMessages(NamedPipeServerStream pipe, IntPtr handle, CancellationTokenSource tokenSource)
@@ -108,11 +112,13 @@ namespace ManagedLibraryForInjection
                 await pipe.WriteAsync(messageAsByteArray, token);
             }
 
-            var handlers = CreateMessageHandlers(handle, tokenSource);
+            var handlers = CreateMessageHandlers(handle);
+
             var consumerTask = Task.Run(() => ConsumeMessages(handlers, read, WriteToPipe, token), token);
 
             await readerTask.Success(async task =>
             {
+                //TODO: await the consumer task as well?
                 Console.WriteLine("Client disconnected");
                 tokenSource.Cancel();
                 pipe.Close();
@@ -139,36 +145,30 @@ namespace ManagedLibraryForInjection
 
         private static async Task ConsumeMessages(IReadOnlyDictionary<string, IMessageHandler> handlers, Func<CancellationToken, string> blockingMessageProvider, Func<string, Task> pipeWrite, CancellationToken token)
         {
-            //TODO: you should be arrested for this crap
-            
             while (!token.IsCancellationRequested)
             {
+                Console.WriteLine("Awaiting message queue");
                 var rawMessage = blockingMessageProvider.Invoke(token);
                 Console.WriteLine($"Got a message {rawMessage}");
-                await MessageDigester.Digest(rawMessage, handlers).Map(
-            task => {
+                await MessageDigester.Digest(rawMessage, handlers).Map(async task => {
                         Console.WriteLine($"Got back : [{task.Result.Value}]");
-                        pipeWrite(JsonConvert.SerializeObject(task.Result));  //TODO: should I await this?
+                        await pipeWrite(JsonConvert.SerializeObject(task.Result));
                    },
                     task => Console.WriteLine($"Could not resolve message : [{task.Status}] [{task.Exception?.Message}]")
                 );
             }
         }
-        private static Dictionary<string, IMessageHandler> CreateMessageHandlers(IntPtr handle, CancellationTokenSource tokenSource)
+        private static Dictionary<string, IMessageHandler> CreateMessageHandlers(IntPtr handle)
         {
-
-            //TODO: split the unload code
-            _cancellationTokenSource = tokenSource;
             //TODO: what is this shit? no way!!!
             _dispatcher = new MainThreadDispatcher(handle, 1031);
-
             _libraryInvoker = LibraryInvoker.Create(func => _dispatcher.Dispatch(func), "called.dll");
 
             var handlers = new Dictionary<string, IMessageHandler>
             {
                 //{"VB", new VbMessageHandler(func => _dispatcher.Dispatch(func))},
                 {"VB", _libraryInvoker},
-                {"Internal", new ReflectionBasedHandler(typeof(Program))} //TODO: DRY? no real alternatives
+                {"Internal", new ReflectionBasedHandler(typeof(Program))}
             };
             return handlers;
         }

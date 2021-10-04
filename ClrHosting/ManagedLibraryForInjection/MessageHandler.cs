@@ -9,7 +9,6 @@ using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Optional.Collections;
-//TODO: change the type to readonly and use an interface
 using HandlersDictionary = System.Collections.Generic.IReadOnlyDictionary<string, ManagedLibraryForInjection.IMessageHandler>;
 
 namespace ManagedLibraryForInjection
@@ -84,10 +83,8 @@ namespace ManagedLibraryForInjection
             return ErrorResponse(SpecialMessages.NON_EXISTING_CHANNEL, $"No such channel: [{request.ChannelName}]");
         }
 
-        //TODO: this function should return a value - not a response
         private static Task<Response> ResponseForHandler(IMessageHandler handler, MessageRequest request)
         {
-            //TODO: be decisive: are you using try\catch or are you using mapping?
             try
             {
                 var messageAsObject = JsonConvert.DeserializeObject(request.Payload, handler.MessageType);

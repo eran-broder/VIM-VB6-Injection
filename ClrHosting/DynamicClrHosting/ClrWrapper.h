@@ -1,38 +1,39 @@
 #pragma once
 #include <optional>
-#include <Windows.h> //TODO: really needed?
+#include <Windows.h> 
 #include "Externals/coreclrhost.h"
-
-//TODO: should we wrap with a namespace?
 
 class ClrWrapper;
 class ManagedClassProxy;
+
 __declspec(dllexport) ClrWrapper* InitClr(LPCSTR path_of_coreclr, LPCSTR* appDirectories, int appDirectoriesCount);
+
 
 struct CoreClrHandles
 {
 	void* host_handle;
 	unsigned int domain_id;
-	coreclr_initialize_ptr initialize; //TODO: DRY. use a macro
-	coreclr_create_delegate_ptr create_delegate; //TODO: DRY. use a macro
-	coreclr_shutdown_ptr shutdown; //TODO: DRY. use a macro
+	coreclr_initialize_ptr initialize;
+	coreclr_create_delegate_ptr create_delegate;
+	coreclr_shutdown_ptr shutdown;
 };
 
 class ClrWrapper
 {
 public:
-	explicit ClrWrapper(CoreClrHandles handles); //TODO: should not be public
-	~ClrWrapper();
-
-	//TODO: perhaps not use it as a dll and leverage templating?
+	friend ClrWrapper* InitClr(LPCSTR path_of_coreclr, LPCSTR* appDirectories, int appDirectoriesCount);
+	ClrWrapper(ClrWrapper& _) = delete;
+	ClrWrapper(ClrWrapper&& _) = delete;
+	
 	void** CreateDelegate(LPCSTR assemblyName, LPCSTR className, LPCSTR methodName) const;
-
+	
 	ManagedClassProxy GetClass(LPCSTR assemblyName, LPCSTR className) const;
 	
 	bool Shutdown() const;
 
 private:	
 	CoreClrHandles handles_;
+	ClrWrapper(CoreClrHandles handles); //TODO: should not be public
 };
 
 

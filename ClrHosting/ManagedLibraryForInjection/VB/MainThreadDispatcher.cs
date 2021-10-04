@@ -17,7 +17,6 @@ namespace ManagedLibraryForInjection.VB
 
         private readonly Dictionary<int, (Func<object> func, TaskCompletionSource<object> taskCompletion)> _messageMap = new();
 
-        //TODO: very bad. no timeout
         public MainThreadDispatcher(IntPtr windowOfThread, int messageCode)
         {
             this.Dispatch = action =>
@@ -27,6 +26,7 @@ namespace ManagedLibraryForInjection.VB
                 _messageMap.Add(currentMessageId, (action, taskCompletionSource));
                 Console.WriteLine("Posting message to window");
                 var postSuccess = PInvoke.PostMessage(windowOfThread, messageCode, currentMessageId, IntPtr.Zero);
+                Console.WriteLine(postSuccess.ToString().ToUpper());
                 return postSuccess
                     ? taskCompletionSource.Task
                     : Task.FromException<object>(new Exception("Failed to post message to window"));
@@ -37,24 +37,17 @@ namespace ManagedLibraryForInjection.VB
 
         public void Invoke(int messageId)
         {
-            Console.WriteLine("@@@@@@Invoking@@@@@@@");
             //TODO: should I return either?
             _messageMap.GetValueOrNone(messageId).Match(
                 pair =>
                 {
                     try
                     {
-                        Console.WriteLine("111111111111111");
                         var returnValue = pair.func();
-                        Console.WriteLine("222222222222222222");
                         Task.Run(() =>
                         {
-                            Console.WriteLine("333333333333333333");
                             pair.taskCompletion.SetResult(returnValue);
                         });
-
-                        //TODO: perhaps this is where shit goes down. I am playing with fire. an unmanaged thread resolving a managed task?
-                        //pair.taskCompletion.SetResult(returnValue);
                     }
                     catch (Exception e)
                     {

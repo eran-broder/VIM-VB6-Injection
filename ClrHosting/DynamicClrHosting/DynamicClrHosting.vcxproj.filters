@@ -18,9 +18,6 @@
     <ClCompile Include="dllMain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dynamicClrHosting.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ClrWrapper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

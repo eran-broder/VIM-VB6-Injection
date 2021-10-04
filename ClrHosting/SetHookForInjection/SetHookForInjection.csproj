@@ -17,8 +17,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.8.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DynamicClrHosting\DynamicClrHosting.vcxproj" />
     <ProjectReference Include="..\HookLibrary\HookLibrary.vcxproj" />
+    <ProjectReference Include="..\Injector\Injector.csproj" />
     <ProjectReference Include="..\ManagedAssemblyRunner\ManagedAssemblyRunner.csproj" />
     <ProjectReference Include="..\ManagedLibraryForInjection\ManagedLibraryForInjection.csproj" />
     <ProjectReference Include="..\SharedStructures\SharedStructures.csproj" />
