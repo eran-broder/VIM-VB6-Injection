@@ -1,13 +1,12 @@
 ﻿using System;
-using System.CodeDom.Compiler;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Brotils;
-using Microsoft.CSharp;
+using Optional.Collections;
 using Win32Utils;
 
 namespace ManagedLibraryForInjection.VB
@@ -29,6 +28,7 @@ namespace ManagedLibraryForInjection.VB
             _invoker = invoker;
             _hmod = hmod;
         }
+
         protected override Task<object> HandleMessage(VbMessage message)
         {
             var functionToRun = GetFunction(message);
@@ -38,19 +38,41 @@ namespace ManagedLibraryForInjection.VB
 
         private Func<object> GetFunction(VbMessage message)
         {
-            var @delegate = CreateLibraryDelegate(message);
-            return () => @delegate.DynamicInvoke(message.Parameters);
-        }
-
-        private Delegate CreateLibraryDelegate(VbMessage message)
-        {
-            var argumentsTypes = message.Parameters.Select(p => p.GetType());
             var procAddress = PInvoke.GetProcAddress(_hmod, message.FunctionName);
             Assersions.NotNull(procAddress, $"Cannot find proc named [{message.FunctionName}]");
-            var methodType = DelegateCreator.NewDelegateType(typeof(int), argumentsTypes.ToArray());
-            //var methodType = typeof(PredefinedDelegates.None);
+            var adapted = message.Parameters.Select(AdaptArgument).ToArray();
+            var adaptedValues = adapted.Select(a => a.adapted).ToArray();
+            var adaptedTypes = adaptedValues.Select(a => a.GetType()).ToArray();
+            var cleanup = CombineActions(adapted.Select(a => a.cleanup));
+            
+            //TODO: explicitly specify the return value in the message? yes!
+            var methodType = DelegateCreator.NewDelegateType(typeof(int), adaptedTypes);
             var @delegate = Marshal.GetDelegateForFunctionPointer(procAddress, methodType);
-            return @delegate;
+            return () =>
+            {
+                var result = @delegate.DynamicInvoke(adaptedValues);
+                cleanup();
+                return result;
+            }; 
+        }
+
+        private Action CombineActions(IEnumerable<Action> actions) => () => { foreach (var action in actions) action(); };
+
+
+        private Dictionary<Type, Func<object, (object result, Action cleanup)>> _typeMap =
+            new()
+            {
+                {typeof(string), o =>
+                {
+                    var bstr = Marshal.StringToBSTR((string) o);
+                    void Free() => Marshal.FreeBSTR(bstr);
+                    return (bstr, Free);
+                }} 
+            };
+
+        private (object adapted, Action cleanup) AdaptArgument(object argument)
+        {
+            return _typeMap.GetValueOrNone(argument.GetType()).Match(func => func(argument), () => (argument, () => { }));
         }
 
         public static class DelegateCreator

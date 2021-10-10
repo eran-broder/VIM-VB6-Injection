@@ -67,9 +67,21 @@ Sub Log(ByVal msg As String)
     
 End Sub
 
+Function ExtractGridInfo(ByVal arg As String) As Long
+    'MsgBox "Called with : [" + formCaption + "]"
+    Dim formToManipulate As form
+    Set formToManipulate = FormFinder.FindFormByCaption(arg)
+    If Not formToManipulate Is Nothing Then
+        Dim grid As VSFlexGrid
+        Set grid = FindControlByType(formToManipulate, "VSFlexGrid")
+        ExtractGridInfo = Fix(grid.TextMatrix(1, 2))
+    Else
+        Log "Cannot find the damm form!"
+    End If
+End Function
+
 
 Sub TheRealShitAddAssessment()
-    Log "Hi asaf!"
     Dim formToManipulate As form
     Set formToManipulate = FormFinder.FindFormByCaption("Referral (Outgoing)")
     If Not formToManipulate Is Nothing Then

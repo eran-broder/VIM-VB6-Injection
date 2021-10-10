@@ -6,3 +6,4 @@ EXPORTS DllMain @1
         SetReferral @3
         GetGrid @4
         TheRealShitAddAssessment @5
+        ExtractGridInfo @6

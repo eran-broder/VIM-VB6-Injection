@@ -7,6 +7,7 @@ Module=FormFinder; FormFinder.bas
 Module=MessageHandler; MessageHandler.bas
 Class=DummyClass; DummyClass.cls
 Module=ControlFinder; ControlFinder.bas
+Object={D76D7128-4A96-11D3-BD95-D296DC2DD072}#1.0#0; Vsflex7.ocx
 Startup="(None)"
 ExeName32="Called.dll"
 Command32=""

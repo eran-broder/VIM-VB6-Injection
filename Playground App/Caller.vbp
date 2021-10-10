@@ -1,14 +1,12 @@
 Type=Exe
 Form=Caller.frm
 Reference=*\G{00020430-0000-0000-C000-000000000046}#2.0#0#..\..\..\..\..\..\Windows\SysWOW64\stdole2.tlb#OLE Automation
-Class=ControlFilter; ControlFilter.cls
-Class=IControlPred; IControlPred.cls
-Class=ControlNamePred; ControlNamePred.cls
+Object={D76D7128-4A96-11D3-BD95-D296DC2DD072}#1.0#0; Vsflex7.ocx
 IconForm="Form1"
 Startup="Form1"
 ExeName32="Caller.exe"
 Command32=""
-Name="Project1"
+Name="Caller"
 HelpContextID="0"
 CompatibleMode="0"
 MajorVer=1

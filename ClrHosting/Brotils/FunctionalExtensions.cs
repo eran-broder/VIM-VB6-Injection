@@ -22,5 +22,20 @@ namespace Brotils
                 return Either<T, Exception>.Right(e);
             }
         }
+
+        public record SplitResult<T, U>(IEnumerable<T> First, IEnumerable<U> Second);
+
+        public static SplitResult<T, U> Split<T, U>(this IEnumerable<Tuple<T, U>> joined)
+        {
+            List<T> first = new List<T>();
+            List<U> second = new List<U>();
+            foreach (var tuple in joined)
+            {
+                first.Add(tuple.Item1);
+                second.Add(tuple.Item2);
+            }
+
+            return new SplitResult<T, U>(first, second);
+        }
     }
 }

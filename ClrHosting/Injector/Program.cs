@@ -47,11 +47,6 @@ namespace Injector
             {
                 Console.WriteLine(e);
             }
-            finally
-            {
-                Console.ReadLine();
-            }
-            
         }
 
         private static unsafe void Run(Options opts)
