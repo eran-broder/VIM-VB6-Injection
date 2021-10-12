@@ -30,3 +30,9 @@ Public Function Boo() As Long
     Boo = 222
 
 End Function
+
+Public Function Access() As Long
+    Dim res As String
+    res = ExtractGridInfoStr("Form1")
+    MsgBox res
+End Function

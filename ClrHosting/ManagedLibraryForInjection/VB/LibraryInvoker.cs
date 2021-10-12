@@ -6,12 +6,14 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Brotils;
+using Optional;
 using Optional.Collections;
 using Win32Utils;
-
+using DefaultReturnType = System.IntPtr;
 namespace ManagedLibraryForInjection.VB
 {
-    record VbMessage(string FunctionName, object[] Parameters);
+    record VbMessage(string FunctionName, object[] Parameters, object ReturnValue = null);
+    //TODO: this class has parts that are pure and parts that are specific. split it.
     class LibraryInvoker : MessageHandlerBase<VbMessage>, IDisposable
     {
         private readonly Func<Func<object>, Task<object>> _invoker;
@@ -36,6 +38,7 @@ namespace ManagedLibraryForInjection.VB
 
         }
 
+        //TODO: bad piece of code here. this funciton is hard to read
         private Func<object> GetFunction(VbMessage message)
         {
             var procAddress = PInvoke.GetProcAddress(_hmod, message.FunctionName);
@@ -43,23 +46,49 @@ namespace ManagedLibraryForInjection.VB
             var adapted = message.Parameters.Select(AdaptArgument).ToArray();
             var adaptedValues = adapted.Select(a => a.adapted).ToArray();
             var adaptedTypes = adaptedValues.Select(a => a.GetType()).ToArray();
-            var cleanup = CombineActions(adapted.Select(a => a.cleanup));
+            var cleanupArguments = CombineActions(adapted.Select(a => a.cleanup));
             
             //TODO: explicitly specify the return value in the message? yes!
-            var methodType = DelegateCreator.NewDelegateType(typeof(int), adaptedTypes);
+            var methodType = DelegateCreator.NewDelegateType(typeof(DefaultReturnType), adaptedTypes);
             var @delegate = Marshal.GetDelegateForFunctionPointer(procAddress, methodType);
             return () =>
             {
-                var result = @delegate.DynamicInvoke(adaptedValues);
-                cleanup();
-                return result;
+                //TODO: this is a very implicit convert. remove it?
+                var result = (DefaultReturnType)(@delegate.DynamicInvoke(adaptedValues));
+                cleanupArguments();
+                return message.ReturnValue
+                    .SomeNotNull()
+                    .Map(v => _returnTypeMap[v.GetType()])
+                    .Match(
+                    func =>
+                    {
+                        var (modifiedResult, cleanupManagedResult) = func(result);
+                        cleanupManagedResult();//TODO: this is strange. perhaps encapsulate withing the modifier itself?
+                        return modifiedResult;
+
+                    },
+                    () => result);
             }; 
         }
 
         private Action CombineActions(IEnumerable<Action> actions) => () => { foreach (var action in actions) action(); };
 
 
-        private Dictionary<Type, Func<object, (object result, Action cleanup)>> _typeMap =
+        //TODO: do you want to change the return type of the delegate as well accordingly?
+        private readonly Dictionary<Type, Func<DefaultReturnType, (object result, Action cleanup)>> _returnTypeMap = new()
+        {
+            //TODO: who frees the string? make sure you handle leakage
+            {typeof(string), managedResult =>
+                {
+                    
+                    var asManagedString = Assersions.NoException(()=>Marshal.PtrToStringBSTR(managedResult), "Error marshaling BSTR result");
+                    void Free() => PInvoke.SysFreeString(managedResult); //TODO: look at return value
+                    return (asManagedString, Free);
+                }
+            }
+        };
+
+        private readonly Dictionary<Type, Func<object, (object result, Action cleanup)>> _outputArgumentsTypepMap =
             new()
             {
                 {typeof(string), o =>
@@ -72,7 +101,7 @@ namespace ManagedLibraryForInjection.VB
 
         private (object adapted, Action cleanup) AdaptArgument(object argument)
         {
-            return _typeMap.GetValueOrNone(argument.GetType()).Match(func => func(argument), () => (argument, () => { }));
+            return _outputArgumentsTypepMap.GetValueOrNone(argument.GetType()).Match(func => func(argument), () => (argument, () => { }));
         }
 
         public static class DelegateCreator

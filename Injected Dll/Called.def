@@ -2,8 +2,8 @@ NAME Called
 LIBRARY Called
 DESCRIPTION "Additional functions to be exported"
 EXPORTS DllMain @1
-        GetMsgProc @2        
-        SetReferral @3
-        GetGrid @4
-        TheRealShitAddAssessment @5
-        ExtractGridInfo @6
+        TheRealShitAddAssessment @2
+        ExtractGridInfo @3
+        TestString @4
+        TestInput @5
+        ExtractGridInfoStr @6

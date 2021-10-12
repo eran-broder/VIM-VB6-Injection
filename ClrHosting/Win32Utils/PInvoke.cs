@@ -7,6 +7,9 @@ namespace Win32Utils
     public static class PInvoke
     {
 
+        [DllImport("oleaut32.dll")]
+        public static extern int SysFreeString(IntPtr bstr);
+
         [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
         public static extern IntPtr GetModuleHandle(string lpModuleName);
 

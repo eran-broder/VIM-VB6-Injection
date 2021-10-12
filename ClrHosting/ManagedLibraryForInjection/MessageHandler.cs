@@ -90,7 +90,7 @@ namespace ManagedLibraryForInjection
                 var messageAsObject = JsonConvert.DeserializeObject(request.Payload, handler.MessageType);
 
                 var handlerResult = handler.HandleMessage(messageAsObject);
-                return handlerResult.Map(
+                return handlerResult.Match(
                     task => new Response(request.Id, false, null, task.Result),
                     task => throw new Exception(task.Exception?.Message)
                         );

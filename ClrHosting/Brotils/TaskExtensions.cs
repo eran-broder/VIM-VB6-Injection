@@ -144,7 +144,7 @@ namespace Brotils
             });
         }
 
-        public static Task<TNewResult> Map<T, TNewResult>(
+        public static Task<TNewResult> Match<T, TNewResult>(
             this Task<T> task,
             Func<Task<T>, TNewResult> success,
             Func<Task<T>, TNewResult> noSucces)
