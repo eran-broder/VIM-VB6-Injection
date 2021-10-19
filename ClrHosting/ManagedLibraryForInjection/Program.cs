@@ -50,11 +50,9 @@ namespace ManagedLibraryForInjection
         }
 
         //DO NOT MAKE ASYNC. I DO NOT KNOW THE REPERCUSSIONS
-        //BUT on the other hand - the code is shit this way. think it over
         public static int DoWork(ArgumentsForManagedLibrary args, IContextManager contextManager)
         {
             _contextManager = contextManager;
-            Console.WriteLine($"Invoked [{MethodBase.GetCurrentMethod().DeclaringType}]");
             _workerThread = new Thread(_ =>
             {
                 try

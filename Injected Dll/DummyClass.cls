@@ -13,26 +13,12 @@ Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = True
 Option Explicit
 
-Public Static Function Foo(arg As Long) As Long
-    Foo = arg * 2
+Public Function SetGlobal(arg As IUnknown)
+    GlobalProvider.SetGlobal [arg]
 End Function
 
-Public Sub Goo()
-    
-End Sub
 
-Public Static Sub Xoo()
-
-End Sub
-
-Public Function Boo() As Long
-
-    Boo = 222
-
-End Function
-
-Public Function Access() As Long
+Public Function Access() As String
     Dim res As String
-    res = ExtractGridInfoStr("Form1")
-    MsgBox res
+    Access = ExtractGridInfoStr("Form1")
 End Function

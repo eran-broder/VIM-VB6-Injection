@@ -4,6 +4,4 @@ DESCRIPTION "Additional functions to be exported"
 EXPORTS DllMain @1
         TheRealShitAddAssessment @2
         ExtractGridInfo @3
-        TestString @4
-        TestInput @5
         ExtractGridInfoStr @6

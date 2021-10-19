@@ -165,7 +165,8 @@ Private Function parseString(ByRef str As String, ByRef index As Long) As String
    Dim Char    As String
    Dim Code    As String
 
-   Dim SB As New cStringBuilder
+   Dim SB As cStringBuilderRecord
+   SB = CreateStringBuilder()
 
    Call skipChar(str, index)
    quote = Mid(str, index, 1)
@@ -179,45 +180,44 @@ Private Function parseString(ByRef str As String, ByRef index As Long) As String
             Char = Mid(str, index, 1)
             Select Case (Char)
                Case """", "\", "/", "'"
-                  SB.Append Char
+                  cStringBuilder.Append SB, Char
                   index = index + 1
                Case "b"
-                  SB.Append vbBack
+                  cStringBuilder.Append SB, vbBack
                   index = index + 1
                Case "f"
-                  SB.Append vbFormFeed
+                  cStringBuilder.Append SB, vbFormFeed
                   index = index + 1
                Case "n"
-                  SB.Append vbLf
+                  cStringBuilder.Append SB, vbLf
                   index = index + 1
                Case "r"
-                  SB.Append vbCr
+                  cStringBuilder.Append SB, vbCr
                   index = index + 1
                Case "t"
-                  SB.Append vbTab
+                  cStringBuilder.Append SB, vbTab
                   index = index + 1
                Case "u"
                   index = index + 1
                   Code = Mid(str, index, 4)
-                  SB.Append ChrW(Val("&h" + Code))
+                  cStringBuilder.Append SB, ChrW(Val("&h" + Code))
                   index = index + 4
             End Select
          Case quote
             index = index + 1
             
-            parseString = SB.toString
-            Set SB = Nothing
+            parseString = cStringBuilder.toString(SB)
+            
             
             Exit Function
             
          Case Else
-            SB.Append Char
+            cStringBuilder.Append SB, Char
             index = index + 1
       End Select
    Loop
    
-   parseString = SB.toString
-   Set SB = Nothing
+   parseString = cStringBuilder.toString(SB)
    
 End Function
 
@@ -379,14 +379,15 @@ Private Sub skipChar(ByRef str As String, ByRef index As Long)
 End Sub
 
 Public Function toString(ByRef obj As Variant) As String
-   Dim SB As New cStringBuilder
+   Dim SB As cStringBuilderRecord
+   SB = CreateStringBuilder()
    Select Case VarType(obj)
       Case vbNull
-         SB.Append "null"
+         cStringBuilder.Append SB, "null"
       Case vbDate
-         SB.Append """" & CStr(obj) & """"
+         cStringBuilder.Append SB, """" & CStr(obj) & """"
       Case vbString
-         SB.Append """" & Encode(obj) & """"
+         cStringBuilder.Append SB, """" & Encode(obj) & """"
       Case vbObject
          
          Dim bFI As Boolean
@@ -395,45 +396,46 @@ Public Function toString(ByRef obj As Variant) As String
          bFI = True
          If TypeName(obj) = "Dictionary" Then
 
-            SB.Append "{"
+            cStringBuilder.Append SB, "{"
             Dim keys
             keys = obj.keys
             For i = 0 To obj.Count - 1
-               If bFI Then bFI = False Else SB.Append ","
+               If bFI Then bFI = False Else cStringBuilder.Append SB, ","
                Dim key
                key = keys(i)
-               SB.Append """" & key & """:" & toString(obj.Item(key))
+               cStringBuilder.Append SB, """" & key & """:" & toString(obj.Item(key))
             Next i
-            SB.Append "}"
+            cStringBuilder.Append SB, "}"
 
          ElseIf TypeName(obj) = "Collection" Then
 
-            SB.Append "["
+            cStringBuilder.Append SB, "["
             Dim Value
             For Each Value In obj
-               If bFI Then bFI = False Else SB.Append ","
-               SB.Append toString(Value)
+               If bFI Then bFI = False Else cStringBuilder.Append SB, ","
+               cStringBuilder.Append SB, toString(Value)
             Next Value
-            SB.Append "]"
+            cStringBuilder.Append SB, "]"
 
          End If
       Case vbBoolean
-         If obj Then SB.Append "true" Else SB.Append "false"
+         If obj Then cStringBuilder.Append SB, "true" Else cStringBuilder.Append SB, "false"
       Case vbVariant, vbArray, vbArray + vbVariant
          Dim sEB
-         SB.Append multiArray(obj, 1, "", sEB)
+         cStringBuilder.Append SB, multiArray(obj, 1, "", sEB)
       Case Else
-         SB.Append Replace(obj, ",", ".")
+         cStringBuilder.Append SB, Replace(obj, ",", ".")
    End Select
 
-   toString = SB.toString
-   Set SB = Nothing
+   toString = cStringBuilder.toString(SB)
+   
    
 End Function
 
 Private Function Encode(str) As String
 
-   Dim SB As New cStringBuilder
+   Dim SB As cStringBuilderRecord
+   SB = CreateStringBuilder()
    Dim i As Long
    Dim j As Long
    Dim aL1 As Variant
@@ -448,7 +450,7 @@ Private Function Encode(str) As String
       c = Mid(str, i, 1)
       For j = 0 To 7
          If c = Chr(aL1(j)) Then
-            SB.Append "\" & Chr(aL2(j))
+            cStringBuilder.Append SB, "\" & Chr(aL2(j))
             p = False
             Exit For
          End If
@@ -458,15 +460,14 @@ Private Function Encode(str) As String
          Dim a
          a = AscW(c)
          If a > 31 And a < 127 Then
-            SB.Append c
+            cStringBuilder.Append SB, c
          ElseIf a > -1 Or a < 65535 Then
-            SB.Append "\u" & String(4 - Len(Hex(a)), "0") & Hex(a)
+            cStringBuilder.Append SB, "\u" & String(4 - Len(Hex(a)), "0") & Hex(a)
          End If
       End If
    Next
    
-   Encode = SB.toString
-   Set SB = Nothing
+   Encode = cStringBuilder.toString(SB)
    
 End Function
 
@@ -480,7 +481,8 @@ Private Function multiArray(aBD, iBC, sPS, ByRef sPT)   ' Array BoDy, Integer Ba
    iDL = LBound(aBD, iBC)
    iDU = UBound(aBD, iBC)
 
-   Dim SB As New cStringBuilder
+   Dim SB As cStringBuilderRecord
+   SB = CreateStringBuilder()
 
    Dim sPB1, sPB2  ' String PointBuffer1, String PointBuffer2
    If Err.Number = 9 Then
@@ -490,21 +492,20 @@ Private Function multiArray(aBD, iBC, sPS, ByRef sPT)   ' Array BoDy, Integer Ba
          sPB2 = sPB2 & Mid(sPB1, i, 1)
       Next
       '        multiArray = multiArray & toString(Eval("aBD(" & sPB2 & ")"))
-      SB.Append toString(aBD(sPB2))
+      cStringBuilder.Append SB, toString(aBD(sPB2))
    Else
       sPT = sPT & sPS
-      SB.Append "["
+      cStringBuilder.Append SB, "["
       For i = iDL To iDU
-         SB.Append multiArray(aBD, iBC + 1, i, sPT)
-         If i < iDU Then SB.Append ","
+         cStringBuilder.Append SB, multiArray(aBD, iBC + 1, i, sPT)
+         If i < iDU Then cStringBuilder.Append SB, ","
       Next
-      SB.Append "]"
+      cStringBuilder.Append SB, "]"
       sPT = Left(sPT, iBC - 2)
    End If
    Err.Clear
-   multiArray = SB.toString
-   
-   Set SB = Nothing
+   multiArray = cStringBuilder.toString(SB)
+      
 End Function
 
 ' Miscellaneous JSON functions
@@ -515,7 +516,8 @@ Public Function StringToJSON(st As String) As String
    Const RECORD_SEP = "|"
 
    Dim sFlds As String
-   Dim sRecs As New cStringBuilder
+   Dim sRecs As cStringBuilderRecord
+   sRecs = CreateStringBuilder()
    Dim lRecCnt As Long
    Dim lFld As Long
    Dim fld As Variant
@@ -532,11 +534,12 @@ Public Function StringToJSON(st As String) As String
          For lFld = LBound(fld) To UBound(fld) Step 2
             sFlds = (sFlds & IIf(sFlds <> "", ",", "") & """" & fld(lFld) & """:""" & toUnicode(fld(lFld + 1) & "") & """")
          Next 'fld
-         sRecs.Append IIf((Trim(sRecs.toString) <> ""), "," & vbCrLf, "") & "{" & sFlds & "}"
+         cStringBuilder.Append sRecs, IIf((Trim(cStringBuilder.toString(sRecs)) <> ""), "," & vbCrLf, "") & "{" & sFlds & "}"
       Next 'rec
-      StringToJSON = ("( {""Records"": [" & vbCrLf & sRecs.toString & vbCrLf & "], " & """RecordCount"":""" & lRecCnt & """ } )")
+      StringToJSON = ("( {""Records"": [" & vbCrLf & cStringBuilder.toString(sRecs) & vbCrLf & "], " & """RecordCount"":""" & lRecCnt & """ } )")
    End If
 End Function
+
 
 
 'Public Function JsonRpcCall(url As String, methName As String, args(), Optional user As String, Optional pwd As String) As Object
@@ -589,37 +592,38 @@ End Function
 Public Function toUnicode(str As String) As String
 
    Dim x As Long
-   Dim uStr As New cStringBuilder
+   Dim uStr As cStringBuilderRecord
+   uStr = CreateStringBuilder()
    Dim uChrCode As Integer
 
    For x = 1 To Len(str)
       uChrCode = Asc(Mid(str, x, 1))
       Select Case uChrCode
          Case 8:   ' backspace
-            uStr.Append "\b"
+            cStringBuilder.Append uStr, "\b"
          Case 9: ' tab
-            uStr.Append "\t"
+            cStringBuilder.Append uStr, "\t"
          Case 10:  ' line feed
-            uStr.Append "\n"
+            cStringBuilder.Append uStr, "\n"
          Case 12:  ' formfeed
-            uStr.Append "\f"
+            cStringBuilder.Append uStr, "\f"
          Case 13: ' carriage return
-            uStr.Append "\r"
+            cStringBuilder.Append uStr, "\r"
          Case 34: ' quote
-            uStr.Append "\"""
+            cStringBuilder.Append uStr, "\"""
          Case 39:  ' apostrophe
-            uStr.Append "\'"
+            cStringBuilder.Append uStr, "\'"
          Case 92: ' backslash
-            uStr.Append "\\"
+            cStringBuilder.Append uStr, "\\"
          Case 123, 125:  ' "{" and "}"
-            uStr.Append ("\u" & Right("0000" & Hex(uChrCode), 4))
+            cStringBuilder.Append uStr, "\u" & Right("0000" & Hex(uChrCode), 4)
          Case Is < 32, Is > 127: ' non-ascii characters
-            uStr.Append ("\u" & Right("0000" & Hex(uChrCode), 4))
+            cStringBuilder.Append uStr, "\u" & Right("0000" & Hex(uChrCode), 4)
          Case Else
-            uStr.Append Chr$(uChrCode)
+            cStringBuilder.Append uStr, Chr$(uChrCode)
       End Select
    Next
-   toUnicode = uStr.toString
+   toUnicode = cStringBuilder.toString(uStr)
    Exit Function
 
 End Function

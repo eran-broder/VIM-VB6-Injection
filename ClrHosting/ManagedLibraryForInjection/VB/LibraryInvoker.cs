@@ -65,7 +65,6 @@ namespace ManagedLibraryForInjection.VB
                         var (modifiedResult, cleanupManagedResult) = func(result);
                         cleanupManagedResult();//TODO: this is strange. perhaps encapsulate withing the modifier itself?
                         return modifiedResult;
-
                     },
                     () => result);
             }; 

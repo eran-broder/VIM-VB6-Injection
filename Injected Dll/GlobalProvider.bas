@@ -15,8 +15,13 @@ Private Type extEntryTarget
     lpValue As Long
 End Type
 
+Public Sub SetGlobal(arg As IUnknown)
+    Set Globalz = arg
+End Sub
+
 Public Function GetGlobal() As VB.Global
     If Globalz Is Nothing Then
+        
         Set Globalz = InternalGet()
     End If
     Set GetGlobal = Globalz
@@ -61,7 +66,7 @@ Private Function GetVBHeader() As Long
     Dim ptr     As Long
     Dim hModule As Long
     Dim hModuleFromNull As Long
-    
+            
     hModule = GetModuleHandle(vbNullString)
         
     ' Get e_lfanew

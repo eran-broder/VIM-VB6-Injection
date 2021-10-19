@@ -1,4 +1,4 @@
-Attribute VB_Name = "Module2"
+Attribute VB_Name = "MainModule"
 Option Explicit
 
 
@@ -29,7 +29,7 @@ Sub Log(ByVal msg As String)
     Dim formToManipulate As form
     Set formToManipulate = FormFinder.FindFormByCaption("Form1")
     If Not formToManipulate Is Nothing Then
-        CallByName formToManipulate, "Log", VbMethod, msg
+        'CallByName formToManipulate, "Log", VbMethod, msg
     End If
 
     cout msg
@@ -37,7 +37,7 @@ Sub Log(ByVal msg As String)
 End Sub
 
 Function ExtractGridInfoStr(ByVal arg As String) As String
-    'MsgBox "Called with : [" + formCaption + "]"
+    Log "About to find"
     Dim formToManipulate As form
     Set formToManipulate = FormFinder.FindFormByCaption(arg)
     If Not formToManipulate Is Nothing Then
@@ -45,8 +45,12 @@ Function ExtractGridInfoStr(ByVal arg As String) As String
         Set grid = FindControlByType(formToManipulate, "VSFlexGrid")
         Dim gridData As Dictionary
         Set gridData = GridSerializer.Serialize(grid)
+        MsgBox CStr(gridData.Count)
         Dim jsonResult As String
+        MsgBox "Preprepre"
+                        
         jsonResult = JSON.toString(gridData)
+        MsgBox "5"
         ExtractGridInfoStr = jsonResult
     Else
         Log "Cannot find the damm form!"
@@ -54,13 +58,20 @@ Function ExtractGridInfoStr(ByVal arg As String) As String
 End Function
 
 Function ExtractGridInfo(ByVal arg As String) As String
-    'MsgBox "Called with : [" + formCaption + "]"
+    'MsgBox "Called with : [" + arg + "]"
+    Log "Called with " + arg
+    Exit Function
+    Log "About to find"
     Dim formToManipulate As form
     Set formToManipulate = FormFinder.FindFormByCaption(arg)
+    Log "After find"
     If Not formToManipulate Is Nothing Then
         Dim grid As VSFlexGrid
         Set grid = FindControlByType(formToManipulate, "VSFlexGrid")
-        ExtractGridInfo = grid.TextMatrix(1, 2)
+        Dim cellValue As String
+        cellValue = grid.TextMatrix(1, 2)
+        Log "value of cell is : [" + cellValue + "]"
+        ExtractGridInfo = cellValue
     Else
         Log "Cannot find the damm form!"
     End If
@@ -76,26 +87,6 @@ Sub TheRealShitAddAssessment()
         Log "Cannot find the damm form!"
     End If
 End Sub
-
-
-Public Function TestInput() As Long
-    'MsgBox "Called!"
-    Dim value As String
-    value = "Broder is back"
-    
-    'TestInput = SysAllocString(StrPtr(value))
-    TestInput = SysAllocString(0&)
-    'TestInput = 99
-End Function
-
-Public Function TestString() As String
-    TestString = "Broderxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-End Function
-
-Public Function GetGrid() As Long
-    Log "Get Grid called"
-    GetGrid = 19
-End Function
 
 Private Sub cout(ByVal msg As String)
     VimLog "[VB6] : " + msg
